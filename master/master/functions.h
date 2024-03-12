@@ -7,6 +7,11 @@ void setFirstConfig();                              //First system on config by 
 void changeMasterCode(int *codeNew ); 
 void lcdWriteData(int row,int column,String text);
 bool setMasterCode();
-bool setDateTime();
-bool checkers(int,char);
+bool setDate();
+bool setTime();
+bool dateCheckers(int,char);
+bool timeCheckers(int,char);
+bool setDateTimetoClock();
+int convertDataTime(int[8],int[6]);
+void showDateTime();
 #endif

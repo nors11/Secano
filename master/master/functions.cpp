@@ -2,11 +2,13 @@
 #include "functions.h"
 #include <LiquidCrystal_I2C.h>
 #include <Keypad.h> 
-//#include "RTClib.h"
+#include "RTClib.h"
 LiquidCrystal_I2C lcd(0x27,20,4);
 
 char pinMaster[6];
-int clockData[8]={0,0,0,0,0,0,0,0};
+int clockData[8]={0,0,0,0,0,0,0,0};       //have the date values that the user introduce, must be convert to clock format
+int clockTime[6]={0,0,0,0,0,0};           //have the time values that the user introduce, must be convert to clock format
+int dateTimeToClock[6]={2024,3,12,11,0,0};//year,month,day,hour,minutes,seconds-- Valid data to send to clock with the correct format
 short pinMasterLength=6;
 
 const byte rowsCount = 4;
@@ -22,12 +24,19 @@ char keys[rowsCount][columsCount] = {
 const byte rowPins[rowsCount] = { 11, 10, 9, 8 };
 const byte columnPins[columsCount] = { 7, 6, 5, 4 };
 Keypad keypad = Keypad(makeKeymap(keys), rowPins, columnPins, rowsCount, columsCount);
-//RTC_DS3231 rtc;
+RTC_DS3231 rtc;
 
 void setupConfig(){
   Serial.println("Start Setup");
   lcd.init();
   lcd.backlight();
+  if (!rtc.begin()) {
+    Serial.println(F("Couldn't find RTC"));
+    while (1);
+  }
+  if (rtc.lostPower()) {
+    rtc.adjust(DateTime(2024, 3, 12, 7, 34, 0));
+  }
   //rtc.adjust(DateTime(2024, 3, 12, 10, 0, 0));    // Set date time on compile  12 de Marzo de 2024 a las 10:00:00
   return;
 }
@@ -58,7 +67,11 @@ void setFirstConfig(){
           lcdWriteData((7),2,"        ");
         }
       }*/
-      chekList[1] = setDateTime();
+      chekList[1] = setDate();
+      
+      chekList[2] = setTime();
+      setDateTimetoClock();
+
     }
   }
   
@@ -116,7 +129,9 @@ bool setMasterCode(){
 
       return true;
 }
-bool setDateTime(){
+
+bool setDate(){
+  Serial.println("AJUSTE DE FECHA");
   char key = keypad.getKey();
   int position=5;
   bool done =false;
@@ -194,7 +209,7 @@ bool setDateTime(){
       else if(position<=14){
         String strP (key);
         //REVISAR FORMATO MES no mas de 12 dia no mas de 31??
-        if(checkers(position,key)){                     //Validations of format month(0-12)- day(1-31)  
+        if(dateCheckers(position,key)){                     //Validations of format month(0-12)- day(1-31)  
           int intValue = String(key).toInt();
           lcdWriteData(position,2,strP);
           switch(position){                             //Store data in array to set clock later with these values
@@ -233,11 +248,106 @@ bool setDateTime(){
       }   
     }
   }
-  Serial.println("FECHA-HORA CONFIGURADA");
+  lcdWriteData(0,2,"   FECHA GUARDADA");
+  lcdWriteData(0,3,"                    ");
+  delay(1000);
+  Serial.println("FECHA CONFIGURADA");
   return true;
 }
 
-bool checkers(int p,char c){ 
+bool setTime(){
+  bool done =false;
+  char key = keypad.getKey();
+  int position=8;
+  Serial.println("AJUSTE DE HORA");
+  lcdWriteData(0,2,"                    ");
+  lcdWriteData(8,2,"HH:MM");
+  lcdWriteData(0,3,"D= borrar     #= OK");
+  while(!done || (key != '#')){
+    key = keypad.getKey();
+    if(position<13){
+      switch(position){
+        case 8:
+          lcdWriteData(position,2," ");
+          delay(100);
+          lcdWriteData(position,2,"H");
+          delay(100);
+          break;
+        case 9:
+          lcdWriteData(position,2," ");
+          delay(100);
+          lcdWriteData(position,2,"H");
+          delay(100);
+          break;
+        case 11:
+          lcdWriteData(position,2," ");
+          delay(100);
+          lcdWriteData(position,2,"M");
+          delay(100);
+          break;
+        case 12:
+          lcdWriteData(position,2," ");
+          delay(100);
+          lcdWriteData(position,2,"M");
+          delay(100);
+          break;
+        default:
+          break;
+      }
+    }
+    if(key){
+        String strKey (key);
+        int intValue = String(key).toInt();
+        if(key=='D' && position>0){
+          position --;
+          if(position==10) position =9;
+          switch (position){
+            case 8:
+              lcdWriteData(8,2,"H");
+              break;
+            case 9:
+              lcdWriteData(9,2,"H");
+              break;
+            case 11:
+              lcdWriteData(11,2,"M");
+              break;
+            case 12:
+              lcdWriteData(12,2,"M");
+              break;
+            default:
+              break;
+          }
+        }
+        else if((timeCheckers(position,key)) && position<13){ //validate format HH -> 0-24  MM 0-60
+            lcdWriteData(position,2,strKey);
+            switch(position){                                 //Save data in array for convert later to send to clock
+              case 8:
+                clockTime[0]= intValue;
+                break;
+              case 9:
+                clockTime[1]= intValue;
+                break;
+              case 11:
+                clockTime[2]= intValue;
+                break;
+              case 12:
+                clockTime[3]= intValue;
+                done =true;
+                break;
+            }
+            position ++;
+            if(position==10) position =11;
+        }
+    }
+  }
+  lcdWriteData(0,2,"    HORA GRABADA");
+  lcdWriteData(0,3,"                    ");
+  delay(1000);
+  Serial.println("HORA CONFIGURADA");
+}
+
+bool dateCheckers(int p,char c){ 
+  if(c=='*'||c=='#'||c=='A'||c=='B'||c=='C'||c=='D') return false;
   bool result = false;
   switch(p){
     case 10:
@@ -333,9 +443,100 @@ bool checkers(int p,char c){
   return result;
 }
 
+bool timeCheckers(int p,char c){
+  bool result =false;
+  if(c=='*'||c=='#'||c=='A'||c=='B'||c=='C'||c=='D') return false;
+  switch(p){
+    case 8:
+      switch(c){
+        case '0':
+        case '1':
+        case '2':
+          result = true;
+        default:
+          break;
+      }
+      break;
+    case 9:
+      if(clockTime[0]==2){
+        switch(c){
+          case '0':
+          case '1':
+          case '2':
+          case '3':
+            result = true;
+          default:
+            break;
+        }
+      }else{result =true;}
+    
+      break;
+    case 11:
+      switch(c){
+        case '0':
+        case '1':
+        case '2':
+        case '3':
+        case '4':
+        case '5':
+          result= true;
+          break;
+        default:
+          break;
+      }
+      break;
+    case 12:
+      result =true;
+      break;
+    default:
+      break;
+  } 
+  return result;
+}
+
 void changeMasterCode(int *codeNew){
   int nuevo = 1234;
   *codeNew = nuevo;
+}
+
+int convertDataTime(int date[8],int time[6]){
+  //----Year
+      int yyA = (date[0]*10)+date[1];
+      int yyB = (date[2]*10)+date[3];
+      int yyyy= (yyA*100)+yyB;
+      //Serial.print("year: ");Serial.print(yyyy);
+      dateTimeToClock[0]=yyyy;
+
+  //----Month
+      int mm =0;
+      mm=(date[4]*10)+date[5];
+      //Serial.print(" month: ");Serial.print(mm);
+      dateTimeToClock[1]=mm;
+
+  //----Day
+      int dd =0;
+      dd=(date[6]*10)+date[7];
+      //Serial.print(" day: ");Serial.println(dd);
+      dateTimeToClock[2]=dd;
+  //--------
+
+}
+
+bool setDateTimetoClock(){
+  Serial.println("CAMBIO DE HORA SISTEMA");
+  convertDataTime(clockData,clockTime);
+  for(int n =0;n<6;n++){
+    Serial.print(dateTimeToClock[n]);Serial.print(" ");
+  }
+  rtc.adjust(DateTime(dateTimeToClock[0], dateTimeToClock[1], dateTimeToClock[2], dateTimeToClock[3], dateTimeToClock[4], dateTimeToClock[5]));
+  return true;
+}
+
+void showDateTime(){
+  char buf1[20];
+  DateTime now = rtc.now();
+  sprintf(buf1, "%02d:%02d:%02d  %02d/%02d/%02d",  now.hour(), now.minute(), now.second(), now.day(), now.month(), now.year()); 
+  lcdWriteData(0,0,buf1);
 }
 
 void lcdWriteData(int column,int row,String text){
