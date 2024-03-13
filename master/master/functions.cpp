@@ -6,10 +6,12 @@
 LiquidCrystal_I2C lcd(0x27,20,4);
 
 char pinMaster[6];
-int clockData[8]={0,0,0,0,0,0,0,0};       //have the date values that the user introduce, must be convert to clock format
-int clockTime[6]={0,0,0,0,0,0};           //have the time values that the user introduce, must be convert to clock format
-int dateTimeToClock[6]={2024,3,12,11,0,0};//year,month,day,hour,minutes,seconds-- Valid data to send to clock with the correct format
-int showerNum[2]={0,0};
+int clockData[8]={0,0,0,0,0,0,0,0};       //Have the date values that the user introduce, must be convert to clock format
+int clockTime[6]={0,0,0,0,0,0};           //Have the time values that the user introduce, must be convert to clock format
+int dateTimeToClock[6]={2024,3,12,11,0,0};//Year,month,day,hour,minutes,seconds-- Valid data to send to clock with the correct format
+int showerNum[2]={0,0};                   //Number of showers the panel is going to control
+int showerTime[2]={0,0};                  //Minutes the user has to take a shower
+int numShowersDay[2]={0,0};              //How many showers can the user take on a Day
 short pinMasterLength=6;
 
 const byte rowsCount = 4;
@@ -68,12 +70,13 @@ void setFirstConfig(){
           lcdWriteData((7),2,"        ");
         }
       }*/
-      checkList[1] = setDate();
-      checkList[2] = setTime();
-      if(checkList[1]&&checkList[2])setDateTimetoClock();
-      showDateTime();
-      checkList[3] = setShowersNumber();
-
+      //checkList[1] = setDate();
+      //checkList[2] = setTime();
+      //if(checkList[1]&&checkList[2])setDateTimetoClock();
+      //showDateTime();
+      //checkList[3] = setShowersNumber();                    
+      //checkList[4] = setShowersTime();
+      checkList[5] = setNumberOfShowersDay();
     }
   }
   
@@ -384,6 +387,86 @@ bool setShowersNumber(){
    lcdWriteData(0,2,"  TIEMPO GUARDADO  ");
    Serial.print("CONFIG NUM DUCHAS REALIZADA t:");
    Serial.print(showerNum[0]);Serial.println(showerNum[1]);
+   return true;
+}
+
+bool setShowersTime(){
+  bool done =false;
+  char key = keypad.getKey();
+  int position=9;
+  Serial.println("CFG SHOWERS TIME");
+  lcd.clear();
+  lcdWriteData(0,0,"Tiempo ducha(min) ?");
+  lcdWriteData(9,2,"__");
+  lcdWriteData(0,3,"D= borrar     #= OK");
+  while(!done || key!='#'){
+       key = keypad.getKey();
+       if(key){
+        if(key=='*'||key=='#'||key=='A'||key=='B'||key=='C'){}  //que pasa aqui???
+        else if(key=='D' && position >=9){
+          Serial.println("ENTRO");
+          if(position>9)position--;
+          if(position ==9 || position ==10)lcdWriteData(position,2,"_");
+        }
+        else if(position<=10 && key!='D'){
+          String strKey (key);
+          int intValue = String(key).toInt();
+          lcdWriteData(position,2,strKey);
+          //if(position==9)
+          if(position ==9){showerTime[0]=intValue;}
+          else if(position ==10){showerTime[1]=intValue;}
+          position ++;
+        }
+        else{}
+        if((String(showerTime[0]).toInt()) + (String(showerTime[1]).toInt()) != 0){done=true;}
+        else{done=false;}
+        Serial.print("Posicion=:");Serial.println(position);
+       }
+   }
+   lcd.clear();
+   lcdWriteData(0,2,"  TIEMPO GUARDADO  ");
+   Serial.print("CONFIG TIEMPO DUCHAS REALIZADA t:");
+   Serial.print(showerTime[0]);Serial.println(showerTime[1]);
+   return true;
+}
+
+bool setNumberOfShowersDay(){       //He de modificar para que sea de 0 a 9 
+  bool done =false;
+  char key = keypad.getKey();
+  int position=9;
+  Serial.println("CFG SHOWERS NUM * DAY");
+  lcd.clear();
+  lcdWriteData(0,0,"Duchas x Usuario/Dia");
+  lcdWriteData(9,2,"__");
+  lcdWriteData(0,3,"D= borrar     #= OK");
+  while(!done || key!='#'){
+       key = keypad.getKey();
+       if(key){
+        if(key=='*'||key=='#'||key=='A'||key=='B'||key=='C'){}  //que pasa aqui???
+        else if(key=='D' && position >=9){
+          Serial.println("ENTRO");
+          if(position>9)position--;
+          if(position ==9 || position ==10)lcdWriteData(position,2,"_");
+        }
+        else if(position<=10 && key!='D'){
+          String strKey (key);
+          int intValue = String(key).toInt();
+          lcdWriteData(position,2,strKey);
+          //if(position==9)
+          if(position ==9){numShowersDay[0]=intValue;}
+          else if(position ==10){numShowersDay[1]=intValue;}
+          position ++;
+        }
+        else{}
+        if((String(numShowersDay[0]).toInt()) + (String(numShowersDay[1]).toInt()) != 0){done=true;}
+        else{done=false;}
+        Serial.print("Posicion=:");Serial.println(position);
+       }
+   }
+   lcd.clear();
+   lcdWriteData(0,2,"  DATOS GUARDADOS  ");
+   Serial.print("CONFIG NUM DUCHAS *DIA REALIZADA n: ");
+   Serial.print(numShowersDay[0]);Serial.println(numShowersDay[1]);
    return true;
 }
 

@@ -9,7 +9,9 @@ void lcdWriteData(int row,int column,String text);
 bool setMasterCode();
 bool setDate();
 bool setTime();
-bool setShowersNumber();
+bool setShowersNumber();        //falta parpadeo digito
+bool setShowersTime();          //falta parpadeo digito
+bool setNumberOfShowersDay();   //He de modificar para que sea de 0 a 9 +falta parpadeo digito
 bool dateCheckers(int,char);
 bool timeCheckers(int,char);
 bool setDateTimetoClock();

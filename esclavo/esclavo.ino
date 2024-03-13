@@ -3,15 +3,28 @@
 //MOSI         D11
 //MISO         D12
 //SCK          D13
+//-----------------------------ESCLAVO 120324_13_23
 
 #include <SPI.h>
 #include <MFRC522.h>
 #include <AESLib.h>
-
+#include <SoftwareSerial.h>
+#define HEAD 0xAA
+#define MY_SLAVE_ID 0x01
+#define TAIL 0xFE
+#define RS485_PIN_MODE 4         // HIGH -> Transmision; LOW-> recepcion
 #define ERROR_LED 2
 #define OK_LED 3
 #define WATER 4
 #define PULSES_IN 5
+
+//Comandos soportados
+#define UPDATE_STATUS   0x01
+#define RESPONSE_REJECT 0x02
+#define RESPONSE_ACCEPT 0x03
+#define CMD_LED_ON      0x04
+#define CMD_LED_OFF     0x05
+#define OK_LED 3
 
 const int RST_PIN = 9;
 const int SS_PIN = 10;
@@ -23,6 +36,7 @@ unsigned long totalOnTime;        //Time (millis) tha the shower has been active
 unsigned long activeTimes[20];
 unsigned long lastActiveTag;      //Last tag number that the shower had autorithed 
 short lastStatusPulses=0;
+bool pendingToValidateTag = false;
 enum validStatus {
   active,
   inactive,
@@ -36,6 +50,9 @@ enum WATERSTATUS {
 validStatus showerStatus = inactive;
 WATERSTATUS waterStatus =noRunningWater;
 WATERSTATUS lastWaterStatus =noRunningWater;
+SoftwareSerial RS485(6, 7);    // RX, TX
+byte idUser[2]={0x01,0xF0};    // 001 240
+byte buff[5], idx;
 unsigned char *str;
 byte gymId=0x01;
 byte section=0x01;
@@ -71,15 +88,31 @@ byte generateSecret(byte r1,byte r2,byte r3){
   else{sum =sum +9;}
   return sum;
 }
+void sendResponse( int x ){
+  buff[0] = HEAD;
+  buff[1] = MY_SLAVE_ID;
+  buff[2] = idUser[0];
+  buff[3] = idUser[1];
+  buff[4] = (byte)x;    //accion
+  buff[5] = TAIL;
+  digitalWrite( RS485_PIN_MODE, HIGH ); // poner en modo Tx
+  RS485.write( buff, 6 );               // transmitir mensaje
+  RS485.flush();
+  digitalWrite( RS485_PIN_MODE, LOW);   // poner en modo Rx
+}
+
 void setup()
 { 
+  Serial.begin(9600);
+  RS485.begin(9600);
+  SPI.begin();
+  pinMode( RS485_PIN_MODE, OUTPUT );
+  digitalWrite( RS485_PIN_MODE, LOW );// poner en modo de recepcion
   pinMode(ERROR_LED,OUTPUT);
   pinMode(OK_LED,OUTPUT);
   pinMode(WATER,OUTPUT);
   pinMode(PULSES_IN,INPUT);
   digitalWrite(PULSES_IN,HIGH);
-  Serial.begin(9600);
-  SPI.begin();
   mfrc522.PCD_Init();
   for (byte i = 0; i < 6; i++) {
     key.keyByte[i] = 0xFF;
@@ -138,118 +171,181 @@ void loop()
     if(waterStatus==runningWater){Serial.println("corriendo");lastWaterStatus = runningWater;}
     else{Serial.println("detenida");lastWaterStatus= noRunningWater;}
   }*/
-  
-  if(showerStatus== active){
-    updateWaterStatus();    //Check if the water is running
-    if(waterStatus==runningWater && lastWaterStatus == noRunningWater){  //First water activation 
-      Serial.println("ESTADO 1: ");
-      onTimeStart = millis();
-      lastWaterStatus = runningWater;
-    }
-    else if(waterStatus==noRunningWater && lastWaterStatus == runningWater){  //water stops runnig save the time that it was on and running
-      Serial.println("ESTADO 2: ");
-      int n =0;
-      boolean addRegistrer = false;
-      unsigned long time = millis()-onTimeStart;
-      Serial.print("tiempo periodo : ");
-      Serial.println(time);
-      do{
-        if(activeTimes[n]==0){
-          activeTimes[n]=time;
-          addRegistrer=true;
+  if( !RS485.available() ){   //Si no hay recepcion de mensaje entra aqui..
+      if(showerStatus== active){
+        updateWaterStatus();    //Check if the water is running
+        if(waterStatus==runningWater && lastWaterStatus == noRunningWater){  //First water activation 
+          Serial.println("ESTADO 1: ");
+          onTimeStart = millis();
+          lastWaterStatus = runningWater;
         }
-        n++;
-      }while (!addRegistrer && n<20);
-      lastWaterStatus = noRunningWater;
-      delay(300);
-    }
-    else if(waterStatus==runningWater && lastWaterStatus == runningWater){
-      Serial.println("ESTADO 3: ");
-      unsigned long tActual = millis();
-      totalOnTime =0;
-      for(int n=0;n<20;n++){
-        totalOnTime += activeTimes[n];
-      }
-      Serial.print("Tiempo total: ");
-      Serial.println(totalOnTime);
-      delay(300);
-      if(totalOnTime>maxiumShowerTime || (tActual-onTimeStart)>maxiumShowerTime || ((tActual-onTimeStart)+totalOnTime)>maxiumShowerTime ){     //    Maxium time was exceeded stop shower and restart values
-        Serial.print("PARO DE DUCHA POR TIEMPO-------------- ");
-        lastWaterStatus = noRunningWater;
-        for(int n=0;n<20;n++){                                                        //Restore array with time periods
-           activeTimes[n]=0;;
-        }
-        showerOff();
-        sendInfoToMaster(0,lastActiveTag);
-      }
-    }
-    else{
-       //Serial.println("ESTADO 4$$$$$$: ");
-    }
-
-  }
-
-  if (!mfrc522.PICC_IsNewCardPresent())
-    return;
-
-  if (!mfrc522.PICC_ReadCardSerial())
-    return;
-
-  MFRC522::StatusCode status;
-  byte trailerBlock = 7;
-  byte sector = 1;
-  byte blockAddr = 4;
-
-  status = (MFRC522::StatusCode) mfrc522.PCD_Authenticate(MFRC522::PICC_CMD_MF_AUTH_KEY_A, trailerBlock, &key, &(mfrc522.uid));
- ///* if (status != MFRC522::STATUS_OK) {
-  //  Serial.print(F("PCD_Authenticate() failed: "));
-   // Serial.println(mfrc522.GetStatusCodeName(status));
-   // return;
- // }
-  byte buffer[18];
-  byte size = sizeof(buffer);
-  // Read data from the block (again, should now be what we have written)
-  status = (MFRC522::StatusCode) mfrc522.MIFARE_Read(blockAddr, buffer, &size);
-  if (status != MFRC522::STATUS_OK) {
-    Serial.print(F("MIFARE_Read() failed: "));
-    Serial.println(mfrc522.GetStatusCodeName(status));
-  }
-  printArray(buffer, 16); Serial.println();                                     //Print info of the readed Tag
-
-  //----------------------------------------------------------------------------Aqui solo llega si han pasado un TAG sea valido o no
-  if(showerStatus == inactive){
-    //Serial.println("estado Inactivo");
-    if(validTag(buffer) && havePermision(buffer)){   //Tag es valido y master autoriza para hoy 
-      Serial.println("Pasamos a estado activo");
-      lastActiveTag = getTagNumber(buffer);
-      showerOn();
-    }else{error();} 
-  }
-  else if(showerStatus == active){
-    //Serial.println("estado activo");
-    if(validTag(buffer)){     //Tag es valido
-      if(getTagNumber(buffer) == lastActiveTag){                                            //The tag readed is the same that have the shower at this moment registered
-          showerOff();
-          unsigned long spareTime = calculateRestTime();                                    //calculates the remaining time left for the user
-          sendInfoToMaster(spareTime,lastActiveTag);                                        //Send info to master
-          totalOnTime = 0;                                                                  //
-          onTimeStart=0;
+        else if(waterStatus==noRunningWater && lastWaterStatus == runningWater){  //water stops runnig save the time that it was on and running
+          Serial.println("ESTADO 2: ");
+          int n =0;
+          boolean addRegistrer = false;
+          unsigned long time = millis()-onTimeStart;
+          Serial.print("tiempo periodo : ");
+          Serial.println(time);
+          do{
+            if(activeTimes[n]==0){
+              activeTimes[n]=time;
+              addRegistrer=true;
+            }
+            n++;
+          }while (!addRegistrer && n<20);
           lastWaterStatus = noRunningWater;
-          for(int n=0;n<20;n++){                                                            //Restore array with time periods
-           activeTimes[n]=0;;
+          //delay(300);
+        }
+        else if(waterStatus==runningWater && lastWaterStatus == runningWater){
+          Serial.println("ESTADO 3: ");
+          unsigned long tActual = millis();
+          totalOnTime =0;
+          for(int n=0;n<20;n++){
+            totalOnTime += activeTimes[n];
           }
+          Serial.print("Tiempo total: ");
+          Serial.println(totalOnTime);
+          //delay(300);
+          if(totalOnTime>maxiumShowerTime || (tActual-onTimeStart)>maxiumShowerTime || ((tActual-onTimeStart)+totalOnTime)>maxiumShowerTime ){     //    Maxium time was exceeded stop shower and restart values
+            Serial.print("PARO DE DUCHA POR TIEMPO-------------- ");
+            lastWaterStatus = noRunningWater;
+            for(int n=0;n<20;n++){                                                        //Restore array with time periods
+              activeTimes[n]=0;;
+            }
+            showerOff();
+            sendInfoToMaster(0,lastActiveTag);
+          }
+        }
+        else{
+          //Serial.println("ESTADO 4$$$$$$: ");
+        }
       }
-    }
-  
+      if (!mfrc522.PICC_IsNewCardPresent())
+        return;
+
+      if (!mfrc522.PICC_ReadCardSerial())
+        return;
+
+      MFRC522::StatusCode status;
+      byte trailerBlock = 7;
+      byte sector = 1;
+      byte blockAddr = 4;
+
+      status = (MFRC522::StatusCode) mfrc522.PCD_Authenticate(MFRC522::PICC_CMD_MF_AUTH_KEY_A, trailerBlock, &key, &(mfrc522.uid));
+      byte buffer[18];
+      byte size = sizeof(buffer);
+      // Read data from the block (again, should now be what we have written)
+      status = (MFRC522::StatusCode) mfrc522.MIFARE_Read(blockAddr, buffer, &size);
+      if (status != MFRC522::STATUS_OK) {
+        Serial.print(F("MIFARE_Read() failed: "));
+        Serial.println(mfrc522.GetStatusCodeName(status));
+      }
+      printArray(buffer, 16); Serial.println();                                     //Print info of the readed Tag
+
+      //----------------------------------------------------------------------------Aqui solo llega si han pasado un TAG sea valido o no
+      if(showerStatus == inactive){
+        //Serial.println("estado Inactivo");
+        if(validTag(buffer)){   // && havePermision(buffer) Tag es valido y master autoriza para hoy Quizas tendria que poner a eperar rspuesta de master
+          pendingToValidateTag = true;
+          //Serial.println("Pasamos a estado activo");
+          //lastActiveTag = getTagNumber(buffer);
+          //showerOn();
+        }else{error();} 
+      }
+      else if(showerStatus == active){
+        //Serial.println("estado activo");
+        if(validTag(buffer)){     //Tag es valido
+          if(getTagNumber(buffer) == lastActiveTag){                                            //The tag readed is the same that have the shower at this moment registered
+              showerOff();
+              unsigned long spareTime = calculateRestTime();                                    //calculates the remaining time left for the user
+              sendInfoToMaster(spareTime,lastActiveTag);                                        //Send info to master
+              totalOnTime = 0;                                                                  //
+              onTimeStart=0;
+              lastWaterStatus = noRunningWater;
+              for(int n=0;n<20;n++){                                                            //Restore array with time periods
+              activeTimes[n]=0;;
+              }
+          }
+        }
+      
+      }
+      // Halt PICC
+      mfrc522.PICC_HaltA();
+      // Stop encryption on PCD
+      mfrc522.PCD_StopCrypto1();
+      
+    return;
   }
-  // Halt PICC
-  mfrc522.PICC_HaltA();
-  // Stop encryption on PCD
-  mfrc522.PCD_StopCrypto1();
   
+  else{
+      byte incoming = RS485.read();
+      Serial.print("Recibido: ");
+      Serial.println(incoming);
+        
+      if( idx == 0 ){           // principio de trama
+        if( incoming != HEAD ) // trama incorrecta
+          return;
+
+        buff[idx] = incoming;
+        idx++;
+      }
+      else if ( idx > 0 && idx < 4 ){ // 
+        buff[idx++] = incoming;      //  
+        if ( idx == 4 ){                // fin de trama
+          if( buff[3] == TAIL )         // verificar que termine bien
+            ejecutarComando();
+          idx = 0;
+        }
+      }
+  }
+  
+
   
   delay(5);
 }
+
+void ejecutarComando(){
+  Serial.println("Ejectutando comando!!!");
+  if ( buff[1] != MY_SLAVE_ID ) // el mensaje es para otro esclavo
+    return;
+
+  switch( buff[2] ){                      // ejecutar comando
+
+    case UPDATE_STATUS:
+        if(pendingToValidateTag){sendResponse(1);}
+      break;
+
+    case RESPONSE_REJECT:
+
+      break;
+    case CMD_LED_ON:                      // Encender Led
+      digitalWrite( LED_BUILTIN, HIGH );  
+      enviarRespuesta(200);
+      digitalWrite(OK_LED,HIGH);
+      break;
+
+    case CMD_LED_OFF:                     // Apagar Led
+      digitalWrite( LED_BUILTIN, LOW );
+      digitalWrite(OK_LED,LOW);
+      break;
+    default:                              // Comando Inva'lido
+      break;
+  }
+}
+
+void enviarRespuesta( int x ){
+  buff[0] = HEAD;
+  buff[1] = MY_SLAVE_ID;
+  buff[2] = idUser[0];
+  buff[3] = idUser[1];
+  buff[4] = (byte)x;    //accion
+  buff[5] = TAIL;
+  digitalWrite( RS485_PIN_MODE, HIGH ); // poner en modo Tx
+  RS485.write( buff, 6 );               // transmitir mensaje
+  RS485.flush();
+  digitalWrite( RS485_PIN_MODE, LOW);   // poner en modo Rx
+}
+
 void error(){
   digitalWrite(ERROR_LED,HIGH);
   delay(300);
