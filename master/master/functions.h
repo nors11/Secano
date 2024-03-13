@@ -9,6 +9,7 @@ void lcdWriteData(int row,int column,String text);
 bool setMasterCode();
 bool setDate();
 bool setTime();
+bool setShowersNumber();
 bool dateCheckers(int,char);
 bool timeCheckers(int,char);
 bool setDateTimetoClock();

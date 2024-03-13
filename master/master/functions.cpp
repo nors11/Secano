@@ -9,6 +9,7 @@ char pinMaster[6];
 int clockData[8]={0,0,0,0,0,0,0,0};       //have the date values that the user introduce, must be convert to clock format
 int clockTime[6]={0,0,0,0,0,0};           //have the time values that the user introduce, must be convert to clock format
 int dateTimeToClock[6]={2024,3,12,11,0,0};//year,month,day,hour,minutes,seconds-- Valid data to send to clock with the correct format
+int showerNum[2]={0,0};
 short pinMasterLength=6;
 
 const byte rowsCount = 4;
@@ -43,7 +44,7 @@ void setupConfig(){
 
 void setFirstConfig(){
   int configDone = false;
-  bool chekList[4]={false,false,false,false};
+  bool checkList[4]={false,false,false,false};
   lcdWriteData(3,0,"- SECANO 241 -");
   lcdWriteData(3,2,"PULSAR # PARA");
   lcdWriteData(1,3,"CONFIGURAR SISTEMA");
@@ -53,8 +54,8 @@ void setFirstConfig(){
     if (key) {Serial.println(key);  } 
     if(key=='#'){
       /*
-      chekList[0] = setMasterCode();
-      if(chekList[0]){
+      checkList[0] = setMasterCode();
+      if(checkList[0]){
         Serial.println("Fase 1 ok");
         lcd.clear();
         lcdWriteData(0,0," NO OLVIDE SU CLAVE");
@@ -67,10 +68,11 @@ void setFirstConfig(){
           lcdWriteData((7),2,"        ");
         }
       }*/
-      chekList[1] = setDate();
-      
-      chekList[2] = setTime();
-      setDateTimetoClock();
+      checkList[1] = setDate();
+      checkList[2] = setTime();
+      if(checkList[1]&&checkList[2])setDateTimetoClock();
+      showDateTime();
+      checkList[3] = setShowersNumber();
 
     }
   }
@@ -298,7 +300,7 @@ bool setTime(){
     if(key){
         String strKey (key);
         int intValue = String(key).toInt();
-        if(key=='D' && position>0){
+        if(key=='D' && position>8){
           position --;
           if(position==10) position =9;
           switch (position){
@@ -343,7 +345,46 @@ bool setTime(){
   lcdWriteData(0,2,"    HORA GRABADA");
   lcdWriteData(0,3,"                    ");
   delay(1000);
-  Serial.println("HORA CONFIGURADA");
+  Serial.println("HORA CONFIGURADA"); 
+  return true;
+}
+
+bool setShowersNumber(){
+  bool done =false;
+  char key = keypad.getKey();
+  int position=9;
+  Serial.println("CFG SHOWERS NUM");
+  lcd.clear();
+  lcdWriteData(0,0,"Numero de duchas ?");
+  lcdWriteData(9,2,"00");
+  lcdWriteData(0,3,"D= borrar     #= OK");
+  while(!done || key!='#'){
+       key = keypad.getKey();
+       if(key){
+        if(key=='*'||key=='#'||key=='A'||key=='B'||key=='C'){}  //que pasa aqui???
+        else if(key=='D' && position >=9){
+          Serial.println("ENTRO");
+          if(position>9)position--;
+          if(position ==9 || position ==10)lcdWriteData(position,2,"_");
+        }
+        else if(position<=10 && key!='D'){
+          String strKey (key);
+          int intValue = String(key).toInt();
+          lcdWriteData(position,2,strKey);
+          //if(position==9)
+          if(position ==9){showerNum[0]=intValue;}
+          else if(position ==10){showerNum[1]=intValue;done =true;}
+          position ++;
+        }
+        else{}
+        Serial.print("Posicion=:");Serial.println(position);
+       }
+   }
+   lcd.clear();
+   lcdWriteData(0,2,"  TIEMPO GUARDADO  ");
+   Serial.print("CONFIG NUM DUCHAS REALIZADA t:");
+   Serial.print(showerNum[0]);Serial.println(showerNum[1]);
+   return true;
 }
 
 bool dateCheckers(int p,char c){ 
@@ -518,13 +559,25 @@ int convertDataTime(int date[8],int time[6]){
       dd=(date[6]*10)+date[7];
       //Serial.print(" day: ");Serial.println(dd);
       dateTimeToClock[2]=dd;
-  //--------
+  //----Hours
+      int hh =0;
+      hh=((time[0]*10)+time[1]);
+      dateTimeToClock[3]=hh;
+  //----Minutes
+      int mi=0;
+      mi=((time[2]*10)+time[3]);
+      dateTimeToClock[4]=mi;
+  //----Seconds
+      int ss=0;
+      ss=((time[4]*10)+time[5]);
+      dateTimeToClock[5]=ss;
 
 }
 
 bool setDateTimetoClock(){
   Serial.println("CAMBIO DE HORA SISTEMA");
   convertDataTime(clockData,clockTime);
+  
   for(int n =0;n<6;n++){
     Serial.print(dateTimeToClock[n]);Serial.print(" ");
   }
