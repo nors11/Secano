@@ -30,8 +30,8 @@ int codigoMaster = 11223;
 const int maxUsers = 2000;
 long usersKey = 2000;
 bool blackList[maxUsers];
-bool remainCredit[maxUsers];
-int showersNumber=1;
+short remainCredit[maxUsers];
+int showersNumber=2;
 int maxV =3000;
 bool firstBoot = true;
 
@@ -49,7 +49,7 @@ void sendCommand(byte esclavo, byte cmd){
 
 int recibirRespuesta( byte esclavo ){
   digitalWrite(RS485_PIN_MODE, LOW); // modo rx
-  delay(2000);
+  delay(100);                         //estaba a 2000  antes por que lo deje asi?
   Serial3.readBytes( trama, 6 );
 
   if( trama[0] != HEAD )    // error en la trama
@@ -60,9 +60,7 @@ int recibirRespuesta( byte esclavo ){
 
   if( trama[5] != TAIL )    // error en trama
     return -1;
-
-  return trama[4];
-  
+  return trama[4]; 
 }
 
 int getUserKey(){
@@ -85,7 +83,7 @@ void setup() {
   if(firstBoot){
     for(int n=0;n<maxUsers;n++){
       blackList[n]=false;
-      remainCredit[n]=1;
+      remainCredit[n]=2;
     }
     firstBoot =false;
   }
@@ -96,12 +94,13 @@ void loop() {
 
   for(int nSlave=1;nSlave<=showersNumber;nSlave++){
     sendCommand(nSlave, UPDATE_STATUS);
-    int response = recibirRespuesta(SLAVE);
+    Serial.print( "Num_Esclavo: " );Serial.print(nSlave);
+    int response = recibirRespuesta(nSlave);
         if( response == -1 ){
-          Serial.println( "No se recibio respuesta" );
+          Serial.println( " ->No se recibio respuesta" );
         }        
         else{
-          Serial.print( "respuesta:" );
+          Serial.print( " -> respuesta:" );
           Serial.println(response);
           switch(response){
             case RESPONSE_NO_ACTIVITY:
@@ -116,7 +115,7 @@ void loop() {
             case REQUEST_STORE_END:
               Serial.println( "REQUEST_STORE_END" );
               Serial.print( "User ID:" ); Serial.print(trama[2]);Serial.println(trama[3]);
-              remainCredit[getUserKey()] = false;
+              remainCredit[getUserKey()]--;    //= false;
               sendCommand(nSlave,RESPONSE_STORED_OK);
               break;
             default:
@@ -134,7 +133,7 @@ void loop() {
           }*/
         }   
   }
-  delay(5000);
+  delay(2000);
   /*
   if( Serial.available() ){
     char c = Serial.read();
