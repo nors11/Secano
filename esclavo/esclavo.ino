@@ -19,13 +19,19 @@
 #define PULSES_IN 5
 
 //Comandos soportados
-#define UPDATE_STATUS   0x01
-#define RESPONSE_REJECT 0x02
-#define RESPONSE_ACCEPT 0x03
-#define CMD_LED_ON      0x04
-#define CMD_LED_OFF     0x05
-#define OK_LED 3
+#define UPDATE_STATUS       0x01      //Master to slave
+#define RESPONSE_REJECT     0x02      //Master to slave
+#define RESPONSE_ACCEPT     0x03      //Master to slave
+#define RESPONSE_NO_ACTIVITY 0x04     //Slave to master -- System is waiting for key approx
+#define RESPONSE_STORED_OK  0x05      //Master to slave -- Shower service stored to this user
+#define REQUEST_VALIDATE    0x06      //Slave to master -- System has a key pending to validate
+#define REQUEST_STORE_END   0x07      //Slave to master -- User had finished the service, master must store it
+#define SHOWER_BLOCKED      0x08      //BIDI
+#define SHOWER_FORCED       0x09      //BIDI
+#define CMD_LED_ON          0x0A
+#define CMD_LED_OFF         0x0B
 
+byte buffer[18];
 const int RST_PIN = 9;
 const int SS_PIN = 10;
 int button = 8;
@@ -37,6 +43,7 @@ unsigned long activeTimes[20];
 unsigned long lastActiveTag;      //Last tag number that the shower had autorithed 
 short lastStatusPulses=0;
 bool pendingToValidateTag = false;
+bool pendingToConfirmShowerEnd = false;
 enum validStatus {
   active,
   inactive,
@@ -232,7 +239,7 @@ void loop()
       byte blockAddr = 4;
 
       status = (MFRC522::StatusCode) mfrc522.PCD_Authenticate(MFRC522::PICC_CMD_MF_AUTH_KEY_A, trailerBlock, &key, &(mfrc522.uid));
-      byte buffer[18];
+      //byte buffer[18];
       byte size = sizeof(buffer);
       // Read data from the block (again, should now be what we have written)
       status = (MFRC522::StatusCode) mfrc522.MIFARE_Read(blockAddr, buffer, &size);
@@ -247,6 +254,8 @@ void loop()
         //Serial.println("estado Inactivo");
         if(validTag(buffer)){   // && havePermision(buffer) Tag es valido y master autoriza para hoy Quizas tendria que poner a eperar rspuesta de master
           pendingToValidateTag = true;
+          idUser[0]= buffer[2];   
+          idUser[1]= buffer[3];
           //Serial.println("Pasamos a estado activo");
           //lastActiveTag = getTagNumber(buffer);
           //showerOn();
@@ -299,8 +308,6 @@ void loop()
       }
   }
   
-
-  
   delay(5);
 }
 
@@ -312,11 +319,22 @@ void ejecutarComando(){
   switch( buff[2] ){                      // ejecutar comando
 
     case UPDATE_STATUS:
-        if(pendingToValidateTag){sendResponse(1);}
+        if(pendingToValidateTag){sendResponse(REQUEST_VALIDATE);}          //1 = solicito autorizar tag
+        else if(pendingToConfirmShowerEnd){sendResponse(REQUEST_STORE_END);}//2 = ducha realizada, enviamos a master para que almacene datos
+        else{sendResponse(RESPONSE_NO_ACTIVITY);}
       break;
-
+    case RESPONSE_ACCEPT:
+        pendingToValidateTag = false;
+        Serial.println("Pasamos a estado activo");
+        lastActiveTag = getTagNumber(buffer);
+        showerOn();
+      break;
     case RESPONSE_REJECT:
-
+        pendingToValidateTag = false;
+        error();
+      break;
+    case RESPONSE_STORED_OK:
+      pendingToConfirmShowerEnd =false;
       break;
     case CMD_LED_ON:                      // Encender Led
       digitalWrite( LED_BUILTIN, HIGH );  
@@ -393,5 +411,6 @@ void updateWaterStatus(){
 }
 void sendInfoToMaster(unsigned long spareTime, unsigned long tagId){
   Serial.print("Tiempo restante de usuario nº ");
-  Serial.print(tagId); Serial.print(" = ");Serial.print(spareTime); 
+  Serial.print(tagId); Serial.print(" = ");Serial.print(spareTime);
+  pendingToConfirmShowerEnd =true; 
 }
