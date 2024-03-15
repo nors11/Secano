@@ -55,7 +55,7 @@ void setFirstConfig(){
     char key = keypad.getKey();  
     if (key) {Serial.println(key);  } 
     if(key=='#'){
-      /*
+      
       checkList[0] = setMasterCode();
       if(checkList[0]){
         Serial.println("Fase 1 ok");
@@ -69,18 +69,126 @@ void setFirstConfig(){
           }
           lcdWriteData((7),2,"        ");
         }
-      }*/
-      //checkList[1] = setDate();
-      //checkList[2] = setTime();
-      //if(checkList[1]&&checkList[2])setDateTimetoClock();
-      //showDateTime();
-      //checkList[3] = setShowersNumber();                    
-      //checkList[4] = setShowersTime();
-      checkList[5] = setNumberOfShowersDay();
+        configDone = true;  // ELIMIANR SOLO PARA PRUEBAS-------------------------------!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+      }
+      /*
+      checkList[1] = setDate();
+      checkList[2] = setTime();
+      if(checkList[1]&&checkList[2])setDateTimetoClock('c'); //c=  update date and time 
+      showDateTime();
+      checkList[3] = setShowersNumber();                    
+      checkList[4] = setShowersTime();
+      checkList[5] = setNumberOfShowersDay();*/
     }
   }
   
-
+}
+void configMenu(){
+  char key = keypad.getKey();
+  bool passwordOk = false;
+  char pin[6]={'0','0','0','0','0','0'};
+  bool timeOut = false;
+  int position = 0;
+  int coincidences=0;
+  if(key){
+    lcd.clear();
+    lcdWriteData(0,0,"Intoducir Password:");
+    lcdWriteData(7,2,"******");
+    lcdWriteData(0,3,"D= borrar     #= OK");
+    unsigned long entryTime = millis();
+    while( key != '#' && !timeOut){                           //Deberia poner aqui que vaya haciendo send y request a duchas (volver a loop)
+      key = keypad.getKey();
+      if(millis()>(entryTime+15000)) timeOut =true;
+        //----------------------------------
+        if(position<6){
+          lcdWriteData((position+7),2," ");
+          delay(100);
+          lcdWriteData((position+7),2,"*");
+          delay(100);
+        }else{
+          String strP (pin[5]);
+          lcdWriteData((12),2," ");
+          delay(100);
+          lcdWriteData((12),2,strP);
+          delay(100);
+        }
+        //------------------------------------
+        if(key){
+          if(key!='#'){
+            if(key!='D' && position<6){
+              String keyStr(key);
+              lcdWriteData((7+position),2,keyStr);
+              pin[position]=key;
+              position++;
+            }else if(position>0){
+              position--;
+              lcdWriteData((7+position),2,"*");
+              pin[position]=key;
+            }
+            Serial.println(key);
+          }
+          for(int n=0;n<pinMasterLength;n++){
+              Serial.print(pin[n]);
+          }
+        }
+      //}
+    }
+    Serial.println("Salgo del while");
+    Serial.print("Pin introducido :");
+    for(int n=0;n<6;n++){
+      Serial.print(pin[n]);
+    }
+    Serial.println("");
+    Serial.print("Pin master      :");
+    for(int n=0;n<6;n++){
+      Serial.print(pinMaster[n]);
+    }
+    for(int n=0;n<6;n++){
+        if(pin[n] == pinMaster[n]) coincidences++;
+    }
+    Serial.println("");
+    Serial.print("Coincidencias: ");
+    Serial.println(coincidences);
+    if(coincidences!=6){
+        lcd.clear();
+        lcdWriteData(3,2,"CLAVE ERRONEA");
+        delay(1000);
+        coincidences =0;
+        return;
+    } 
+    else{                                                       //Password is ok
+      passwordOk = true;
+      timeOut= false;
+      bool processEnd = false;
+      entryTime = millis();
+      lcd.clear();
+      lcdWriteData(1,0,"MENU CONFIGURACION");
+      lcdWriteData(0,1,"1>Fecha    2>Hora   ");
+      lcdWriteData(0,2,"3>Llaveros 4>Duchas ");
+      lcdWriteData(0,3,"5>Tiempos  6>Otros  ");
+      while( !processEnd && !timeOut){
+        key = keypad.getKey();
+        if(millis()>(entryTime+15000)) timeOut =true;
+        switch(key){
+          case '1':
+              if(setDate()) setDateTimetoClock('d'); processEnd = true;
+            break;
+          case '2':
+              if(setTime()) setDateTimetoClock('t'); processEnd = true;
+            break;
+          case '3':
+            break;
+          case '4':
+            break;
+          case '5':
+            break;
+          case '6':
+            break;
+        }
+      }
+    } 
+  }
+  else return;
 }
 bool setMasterCode(){
       char key = keypad.getKey();
@@ -265,6 +373,7 @@ bool setTime(){
   char key = keypad.getKey();
   int position=8;
   Serial.println("AJUSTE DE HORA");
+  lcd.clear();
   lcdWriteData(0,2,"                    ");
   lcdWriteData(8,2,"HH:MM");
   lcdWriteData(0,3,"D= borrar     #= OK");
@@ -657,9 +766,27 @@ int convertDataTime(int date[8],int time[6]){
 
 }
 
-bool setDateTimetoClock(){
+bool setDateTimetoClock(char param){
   Serial.println("CAMBIO DE HORA SISTEMA");
+  DateTime now = rtc.now();
   convertDataTime(clockData,clockTime);
+  switch(param){
+    case 'd':   //date only   I must define the other params manually (reading the clock values) because user only has update the date values
+        dateTimeToClock[3]=now.hour();
+        dateTimeToClock[4]=now.minute();
+        dateTimeToClock[5]=now.second();
+      break;
+    case 't':   //time only   Same top but with time params
+        dateTimeToClock[0]=now.year();
+        dateTimeToClock[1]=now.month();
+        dateTimeToClock[2]=now.day();
+      break;
+    case 'c':   //date and time
+      break;
+    default:
+      break;
+  }
+  
   
   for(int n =0;n<6;n++){
     Serial.print(dateTimeToClock[n]);Serial.print(" ");

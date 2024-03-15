@@ -8,6 +8,7 @@
 
 // Comandos soportados---------------
 //#define UPDATE_STATUS   0x01
+
 #define UPDATE_STATUS       0x01      //Master to slave
 #define RESPONSE_REJECT     0x02      //Master to slave
 #define RESPONSE_ACCEPT     0x03      //Master to slave
@@ -19,6 +20,7 @@
 #define SHOWER_FORCED       0x09      //BIDI
 #define CMD_LED_ON          0x0A
 #define CMD_LED_OFF         0x0B
+
 // Formato de Trama: <HEAD> <SLAVE_ID> <CMD> <TAIL>
 // Ejemplo: 0xFF 0x34 0x01 0xFE -> Indica que el esclavo 0x34 debe ejecutar la orden 0x01
 #define RS485_PIN_MODE 25         // HIGH -> Transmision; LOW-> recepcion
@@ -27,8 +29,8 @@
 byte trama[5], idx;
 //----------------------------------
 int codigoMaster = 11223;
-const int maxUsers = 2000;
-long usersKey = 2000;
+const int maxUsers = 1500;
+long usersKey = 1500;
 bool blackList[maxUsers];
 short remainCredit[maxUsers];
 int showersNumber=2;
@@ -78,20 +80,26 @@ void setup() {
   digitalWrite(RS485_PIN_MODE, LOW);  // modo recepcion
   Serial3.begin(9600);                // Configurar Serial3 para el bus RS-485
 
-  //firstBoot = EEPROM.read(1);  Poner a 1 si es firts boot
-  
+  firstBoot = EEPROM.read(1);  //Poner a 1 si es firts boot
+  //EEPROM.write(1,1);
   if(firstBoot){
+    Serial.println("ES FIRST BOOT");
     for(int n=0;n<maxUsers;n++){
       blackList[n]=false;
       remainCredit[n]=2;
     }
-    firstBoot =false;
+    //firstBoot =false;
   }
 
 }
 
 void loop() {
-
+  if(firstBoot){setFirstConfig();}
+  firstBoot =false;
+  configMenu();
+  showDateTime();
+  delay(10);
+  /*
   for(int nSlave=1;nSlave<=showersNumber;nSlave++){
     sendCommand(nSlave, UPDATE_STATUS);
     Serial.print( "Num_Esclavo: " );Serial.print(nSlave);
@@ -130,61 +138,12 @@ void loop() {
           }
           else if(trama[4]==0x02){
               //Aqui esclavo me esatria diciendo que este tag ha realizado una ducha y debo incrementar en memoria
-          }*/
+          }
         }   
   }
-  delay(2000);
-  /*
-  if( Serial.available() ){
-    char c = Serial.read();
-    int h, t;
-    switch(c){
-      case '0':
-        Serial.println("ENVIO ON");
-        sendCommand(SLAVE, CMD_LED_ON);
-        h = recibirRespuesta(SLAVE);
-        if( h == -1 )
-          Serial.println( "No se recibio' respuesta" );
-        else
-          Serial.print( "respuesta:" );
-          Serial.println(h);
-          Serial.print( "User ID:" ); Serial.print(trama[2]);Serial.println(trama[3]);
-          isKeyAccepted();
-        break;
-        
-      case '1':
-        Serial.println("ENVIO OFF");
-        sendCommand(SLAVE, CMD_LED_OFF);
-        break;
-
-      /*case '2':
-        enviarComando(SLAVE, CMD_READ_TEMP);
-        Serial.print("Temperatura: ");
-        t = recibirRespuesta(SLAVE);
-        if( t == -1 )
-          Serial.println( "No se recibio' respuesta" );
-        else
-          Serial.println(t);
-        break;
-
-      case '3':
-        enviarComando(SLAVE, CMD_READ_HUMED);
-        Serial.print("Humedad: ");
-        h = recibirRespuesta(SLAVE);
-        if( h == -1 )
-          Serial.println( "No se recibio' respuesta" );
-        else
-          Serial.println(h);
-        break;//
-
-      default:
-        break;
-    }
-    delay(5);
-  }*/
-
+  delay(2000);*/
   //EEPROM.put( eeAddress, customVar );
-  //if(firstBoot){setFirstConfig();}
+  
   //delay(1000);
 
 }
@@ -199,6 +158,22 @@ bool isKeyAccepted(){
   if(blackList[userKey] || remainCredit[userKey]==0){result = false;}
   
   return result;
+}
+
+void findDevices(){
+  bool showerStatus[showersNumber];
+  for(int i=1;i<showersNumber;i++){
+      sendCommand(i,UPDATE_STATUS);
+      int response = recibirRespuesta(i);
+      if( response == -1 ) showerStatus[i] = 0;
+      else showerStatus[i] = 1;            
+  }
+}
+bool isAlive(int slaveNumber){
+    sendCommand(slaveNumber,UPDATE_STATUS);
+    int response = recibirRespuesta(slaveNumber);
+    if( response == -1 ) return false;
+    else return true;            
 }
 
 /*  Serial.print("codigo antes de ir a funcion = ");Serial.println(codigoMaster);

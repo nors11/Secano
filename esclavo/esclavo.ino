@@ -10,7 +10,7 @@
 #include <AESLib.h>
 #include <SoftwareSerial.h>
 #define HEAD 0xAA
-#define MY_SLAVE_ID 0x02
+#define MY_SLAVE_ID 0x01
 #define TAIL 0xFE
 #define RS485_PIN_MODE 8         // HIGH -> Transmision; LOW-> recepcion
 #define ERROR_LED 2
