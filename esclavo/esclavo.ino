@@ -10,7 +10,7 @@
 #include <AESLib.h>
 #include <SoftwareSerial.h>
 #define HEAD 0xAA
-#define MY_SLAVE_ID 0x01
+#define MY_SLAVE_ID 0x02
 #define TAIL 0xFE
 #define RS485_PIN_MODE 8         // HIGH -> Transmision; LOW-> recepcion
 #define ERROR_LED 2
@@ -32,7 +32,7 @@
 #define CMD_LED_OFF         0x0B
 #define CHANGE_STATUS       0x0C
 #define CHANGE_SHOWER_TIME  0x0D
-
+#define CHANGE_YOUR_ID      0x0E
 #define ERROR               0x0F
 
 byte buffer[18];

@@ -5,7 +5,7 @@
 void setupConfig();                                 //On init system
 void configMenu();
 void setFirstConfig();                              //First system on config by user
-void changeMasterCode(int *codeNew ); 
+void restoreMasterCode(char *codeNew ,int size); 
 void lcdWriteData(int row,int column,String text);
 bool setMasterCode();
 bool setDate();
@@ -35,6 +35,9 @@ bool subMenu1();
 bool subMenu2();
 bool subMenu3();
 bool subMenu2_2();
+bool restoreData();
+bool saveDataToEEPROM(int,int);
+bool factoryReset();
 
 
 #endif

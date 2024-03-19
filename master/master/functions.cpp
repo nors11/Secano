@@ -82,7 +82,7 @@ void setFirstConfig(){
       checkList[5] = setNumberOfShowersDay();*/
     }
   }
-  
+  saveDataToEEPROM(1,0); //FirstBoot = false;
 }
 bool passValidate(){
   char key = keypad.getKey();
@@ -150,6 +150,7 @@ bool passValidate(){
     else return true;
   //}
 }
+
 void configMenu(){
   char key = keypad.getKey();
   unsigned long timeOutMenu = 120000;  //120000; //2 min
@@ -211,6 +212,7 @@ void configMenu(){
     lcd.clear();
   }
 }
+
 bool setMasterCode(){
       char key = keypad.getKey();
       char lastKey ='0';
@@ -233,7 +235,7 @@ bool setMasterCode(){
           lcdWriteData((position+7),2,"*");
           delay(100);
         }else{
-          String strP (pinMaster[5]);
+          String strP (codeA[5]);
           lcdWriteData((12),2," ");
           delay(100);
           lcdWriteData((12),2,strP);
@@ -245,22 +247,74 @@ bool setMasterCode(){
             if(key!='D' && position<6){
               String keyStr(key);
               lcdWriteData((7+position),2,keyStr);
-              pinMaster[position]=key;
+              codeA[position]=key;
               position++;
             }else if(position>0){
               position--;
               lcdWriteData((7+position),2,"*");
-              pinMaster[position]=key;
+              codeA[position]=key;
             }
             Serial.println(key);
           }
           for(int n=0;n<pinMasterLength;n++){
-              Serial.print(pinMaster[n]);
+              Serial.print(codeA[n]);
           }
         }
       }
-  
-
+      lcdWriteData(0,0,"REPETIR CLAVE:      ");
+      lcdWriteData(7,2,"******");
+      position =0;
+      while((position < pinMasterLength) || (key != '#')){          //MasterCode must be 6 digits length
+        key = keypad.getKey();
+        if(position<6){
+          lcdWriteData((position+7),2," ");
+          delay(100);
+          lcdWriteData((position+7),2,"*");
+          delay(100);
+        }else{
+          String strP (codeB[5]);
+          lcdWriteData((12),2," ");
+          delay(100);
+          lcdWriteData((12),2,strP);
+          delay(100);
+        }
+        
+        if(key){
+          if(key!='#'){
+            if(key!='D' && position<6){
+              String keyStr(key);
+              lcdWriteData((7+position),2,keyStr);
+              codeB[position]=key;
+              position++;
+            }else if(position>0){
+              position--;
+              lcdWriteData((7+position),2,"*");
+              codeB[position]=key;
+            }
+            Serial.println(key);
+          }
+          for(int n=0;n<pinMasterLength;n++){
+              Serial.print(codeB[n]);
+          }
+        }
+      }
+      short error = 0;
+      for(int n=0;n<6;n++){
+        if(codeA[n] != codeB[n] )error ++;
+      }
+      if(error!=0){
+        lcd.clear();
+        lcdWriteData(0,2,"    NO COINCIDEN  ");
+        delay(500);
+        return false;
+      }
+      else{
+        for(int n=0;n<6;n++){
+          pinMaster[n] = codeA[n];
+          saveDataToEEPROM((n+10),codeA[n]);
+          delay(1);
+        }
+      } 
       return true;
 }
 
@@ -752,9 +806,12 @@ bool timeCheckers(int p,char c){
   return result;
 }
 
-void changeMasterCode(int *codeNew){
-  int nuevo = 1234;
-  *codeNew = nuevo;
+void restoreMasterCode(char *code, int arrSize){
+  arrSize = arrSize / sizeof(code[0]);
+  for( byte i =0;i<arrSize;i++){
+    pinMaster[i]=code[i];
+  }
+
 }
 
 int convertDataTime(int date[8],int time[6]){
@@ -1315,7 +1372,7 @@ bool subMenu3(){
   lcd.clear();
   lcdWriteData(0,0,"1>Test comunicacion ");
   lcdWriteData(0,1,"2>Substituir lector ");
-  lcdWriteData(0,2,"3>Añadir lector     ");
+  lcdWriteData(0,2,"3>Nuevo lector     ");
   lcdWriteData(0,3,"4>Nueva Pasw A>Salir");
   char key = keypad.getKey();
   bool subMenu3End = false;
@@ -1331,10 +1388,10 @@ bool subMenu3(){
         int succes = 0;
         for(int n=1; n<=nDevices ;n++){
           if(isAlive(n)) succes ++;
-          else if(n<10){error[n] = n;}
-        }
-        for(int n=0;n<10;n++){
-          if(error[n]!=0) nErrors ++;
+          else if(n<10){
+            error[nErrors] = n;
+            nErrors ++;
+          }
         }
         lcd.clear();
         if(succes == nDevices){
@@ -1344,8 +1401,8 @@ bool subMenu3(){
         else if(succes!=0){
           int pos =0;
           int pos2=0;
-          lcdWriteData(0,1,"12-45-78-1011-1314-1617-1920");
-          lcdWriteData(0,0,"Errores en: ");
+          //lcdWriteData(0,1,"12-45-78-1011-1314-1617-1920");
+          lcdWriteData(0,0,"Errores en lectore:");
           for(int n=0;n<10;n++){
             if(error[n]!=0 && pos<=19){ 
               lcdWriteData(pos,1,(String)error[n]);
@@ -1353,7 +1410,7 @@ bool subMenu3(){
               if(pos<19)lcdWriteData(pos,1,"-");     
               pos ++;
             }
-            else{
+            else if(error[n]!=0 && pos>19){
               lcdWriteData(pos,2,(String)error[n]);
               pos2 = pos2 +2;
               lcdWriteData(pos2,2,"-");
@@ -1361,14 +1418,75 @@ bool subMenu3(){
             }
           }
         }
-        else{
-          lcdWriteData(0,0,"ERROR COMUNICACION ");
+        else if(succes == 0){
+          lcdWriteData(0,0," ERROR COMUNICACION ");
           lcdWriteData(0,1,"     GENERAL       ");
         }
-        delay(1000);
+        delay(2000);
         subMenu3End =true;
+      }
+      else if(key =='2'){
+
+      }
+      else if(key =='3'){
+        subMenu3End = true;
+      }
+      else if(key =='4'){
+        lcd.clear();
+        subMenu3End = setMasterCode();
+      }
+      else if(key =='A'){
+        subMenu3End = true;
+      }
+      else if(key =='*'){
+        delay(100);
+        short click = 0;
+        for(int n=0;n<15;n++){
+          key=keypad.getKey();
+          if(key=='*') click ++;
+          delay(100);
+        }
+        if(click >2){
+          lcd.clear();
+          lcdWriteData(0,0,"    Restore Menu  ");
+          int code = getNumberByKeypad(4);
+          key =!key;
+          if(code==resetCode){
+            lcdWriteData(0,1,"PULSAR 'A' PARA     ");
+            lcdWriteData(0,2,"RESTAURAR A FABRICA ");
+            lcdWriteData(0,3,"C:Cancelar A:Confirm");
+            while(!timeOut && !subMenu3End ){
+              key = keypad.getKey();
+              if(millis()>(entryTime+30000))timeOut =true;
+              if(key){
+                if(key=='A'){   //Reset to factory default Confirmed
+                  lcd.clear();
+                  lcdWriteData(0,0," SISTEMA RESETEADO ");
+                  lcdWriteData(0,2," REINICIE CONSOLA  ");
+                  factoryReset();
+                  //pongo aqui un while para que no salga hasta que reinicien sistema???
+                  delay(1000);
+                  subMenu3End = true;
+                }
+                else{
+                  lcd.clear();
+                  lcdWriteData(0,2,"OPERACION CANCELADA");
+                  delay(1000);
+                  subMenu3End =true;
+                }
+              }
+            }
+          }
+          else{subMenu3End =true;}
+        }
       }
     }
   }
   return true;
+}
+
+bool factoryReset(){
+
+  saveDataToEEPROM(1,1);
+
 }

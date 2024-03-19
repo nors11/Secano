@@ -21,7 +21,7 @@
 #define CMD_LED_OFF         0x0B
 #define CHANGE_STATUS       0x0C
 #define CHANGE_SHOWER_TIME  0x0D
-
+#define CHANGE_YOUR_ID      0x0E
 #define ERROR               0x0F
 
 #define HEAD 0xAA
@@ -34,12 +34,12 @@ byte trama[5], idx;
 //----------------------------------
 const int RST_PIN = 48;               //RFID RESET
 const int SS_PIN = 53;                //RFID SDA
-int codigoMaster = 11223;
+//int codigoMaster = 11223;
 const int maxUsers = 1300;
 long usersKey = 1300;
 bool blackList[maxUsers];
 short remainCredit[maxUsers];
-int showersNumber=1;
+int showersNumber=2;
 int maxV =3000;
 bool firstBoot = true;
 MFRC522 mfrc522(SS_PIN, RST_PIN);
@@ -70,6 +70,9 @@ int recibirRespuesta( byte esclavo ){
 
   if( trama[5] != TAIL )    // error en trama
     return -1;
+  if( trama[4] == 254) 
+    return -1;  
+
   return trama[4]; 
 }
 
@@ -109,13 +112,19 @@ void setup() {
       blackList[n]=false;
       remainCredit[n]=2;
     }
+    int space = EEPROM.length();
+    Serial.print("Espacio EEPROM: ");Serial.println(space);
     //firstBoot =false;
+    restoreData();
+  }
+  else{
+    restoreData();
   }
 
 }
 
 void loop() {
-  //if(firstBoot){setFirstConfig();}
+  if(firstBoot){setFirstConfig();}
   firstBoot =false;
   configMenu();
   showDateTime(); 
@@ -208,6 +217,7 @@ void findDevices(){
 bool isAlive(int slaveNumber){
     sendCommand(slaveNumber,UPDATE_STATUS,0);
     int response = recibirRespuesta(slaveNumber);
+    Serial.print("Slave n:");Serial.print(slaveNumber);Serial.print("Res: ");Serial.println(response);
     if( response == -1 ) return false;
     else return true;            
 }
@@ -298,6 +308,21 @@ bool updateShowerTimeToDevices(int time){
     if(response == RESPONSE_STORED_OK) succes ++;
   }
   return (succes == showersNumber);
+}
+
+bool saveDataToEEPROM(int pos,int data){
+  EEPROM.write(pos,data);
+  return true;
+}
+
+bool restoreData(){
+
+  char codeRestored[6]={'0','0','0','0','0','0'};
+  for(int n=0;n<6;n++){
+    codeRestored[n] = EEPROM.read((n+10));
+  }
+  restoreMasterCode(codeRestored, sizeof(codeRestored));
+  //pinMaster[0] = 'a';
 }
 /*  Serial.print("codigo antes de ir a funcion = ");Serial.println(codigoMaster);
   int *dir;
