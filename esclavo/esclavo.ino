@@ -30,6 +30,10 @@
 #define SHOWER_FORCED       0x09      //BIDI
 #define CMD_LED_ON          0x0A
 #define CMD_LED_OFF         0x0B
+#define CHANGE_STATUS       0x0C
+#define CHANGE_SHOWER_TIME  0x0D
+
+#define ERROR               0x0F
 
 byte buffer[18];
 const int RST_PIN = 9;
@@ -292,16 +296,16 @@ void loop()
       Serial.println(incoming);
         
       if( idx == 0 ){           // principio de trama
-        if( incoming != HEAD ) // trama incorrecta
+        if( incoming != HEAD )  // trama incorrecta
           return;
 
         buff[idx] = incoming;
         idx++;
       }
-      else if ( idx > 0 && idx < 4 ){ // 
+      else if ( idx > 0 && idx < 5 ){ // 
         buff[idx++] = incoming;      //  
-        if ( idx == 4 ){                // fin de trama
-          if( buff[3] == TAIL )         // verificar que termine bien
+        if ( idx == 5 ){                // fin de trama
+          if( buff[4] == TAIL )         // verificar que termine bien
             ejecutarComando();
           idx = 0;
         }
@@ -319,9 +323,13 @@ void ejecutarComando(){
   switch( buff[2] ){                      // ejecutar comando
 
     case UPDATE_STATUS:
-        if(pendingToValidateTag){sendResponse(REQUEST_VALIDATE);}          //1 = solicito autorizar tag
+        if(pendingToValidateTag){sendResponse(REQUEST_VALIDATE);}           //1 = solicito autorizar tag
         else if(pendingToConfirmShowerEnd){sendResponse(REQUEST_STORE_END);}//2 = ducha realizada, enviamos a master para que almacene datos
-        else{sendResponse(RESPONSE_NO_ACTIVITY);}
+        else{
+          if(showerStatus== blocked) sendResponse(SHOWER_BLOCKED);
+          else if(showerStatus== forced) sendResponse(SHOWER_FORCED);
+          else{sendResponse(RESPONSE_NO_ACTIVITY);}
+        }
       break;
     case RESPONSE_ACCEPT:
         pendingToValidateTag = false;
@@ -335,6 +343,25 @@ void ejecutarComando(){
       break;
     case RESPONSE_STORED_OK:
       pendingToConfirmShowerEnd =false;
+      break;
+    case CHANGE_STATUS:
+        if(buff[3]==0){
+          setShowerNormal();//showerStatus = inactive;
+        }
+        else if (buff[3]==1)
+        {
+          setShowerBlock();//showerStatus = blocked;
+        }
+        else if(buff[3]==2){
+          setShowerBypass();//showerStatus = forced;
+        }
+        
+      break;
+    case CHANGE_SHOWER_TIME:
+        if(buff[3]!=0){
+          maxiumShowerTime = (buff[3] * 1000);
+          sendResponse(RESPONSE_STORED_OK);
+        }else{sendResponse(ERROR);}
       break;
     case CMD_LED_ON:                      // Encender Led
       digitalWrite( LED_BUILTIN, HIGH );  
@@ -382,6 +409,30 @@ void showerOff(){
   digitalWrite(WATER,LOW);
   showerStatus = inactive;
   delay(1000);
+  return;
+}
+void setShowerBlock(){
+  digitalWrite(OK_LED,LOW);
+  digitalWrite(ERROR_LED,HIGH);
+  digitalWrite(WATER,LOW);
+  showerStatus = blocked;
+  //delay(1000);
+  return;
+}
+void setShowerBypass(){
+  digitalWrite(OK_LED,HIGH);
+  digitalWrite(ERROR_LED,LOW);
+  digitalWrite(WATER,HIGH);
+  showerStatus = forced;
+  //delay(1000);
+  return;
+}
+void setShowerNormal(){
+  digitalWrite(OK_LED,LOW);
+  digitalWrite(ERROR_LED,LOW);
+  digitalWrite(WATER,LOW);
+  showerStatus = inactive;
+  //delay(1000);
   return;
 }
 void updateWaterStatus(){ 

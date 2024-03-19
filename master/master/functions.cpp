@@ -5,13 +5,13 @@
 #include "RTClib.h"
 LiquidCrystal_I2C lcd(0x27,20,4);
 
-char pinMaster[6];
+char pinMaster[6]={'0','0','0','0','0','0'};
 int clockData[8]={0,0,0,0,0,0,0,0};       //Have the date values that the user introduce, must be convert to clock format
 int clockTime[6]={0,0,0,0,0,0};           //Have the time values that the user introduce, must be convert to clock format
 int dateTimeToClock[6]={2024,3,12,11,0,0};//Year,month,day,hour,minutes,seconds-- Valid data to send to clock with the correct format
-int showerNum[2]={0,0};                   //Number of showers the panel is going to control
+int showerNum[2]={0,2};                   //Number of showers the panel is going to control
 int showerTime[2]={0,0};                  //Minutes the user has to take a shower
-int numShowersDay[2]={0,0};              //How many showers can the user take on a Day
+int numShowersDay[2]={0,0};               //How many showers can the user take on a Day
 short pinMasterLength=6;
 
 const byte rowsCount = 4;
@@ -77,20 +77,23 @@ void setFirstConfig(){
       if(checkList[1]&&checkList[2])setDateTimetoClock('c'); //c=  update date and time 
       showDateTime();
       checkList[3] = setShowersNumber();                    
-      checkList[4] = setShowersTime();
+      checkList[4] = setShowerTime();
+      updateShowerTimeToDevices(getShowerTime());
       checkList[5] = setNumberOfShowersDay();*/
     }
   }
   
 }
-void configMenu(){
+bool passValidate(){
   char key = keypad.getKey();
   bool passwordOk = false;
   char pin[6]={'0','0','0','0','0','0'};
   bool timeOut = false;
   int position = 0;
   int coincidences=0;
-  if(key){
+  int coincidences2=0;
+
+  //if(true){
     lcd.clear();
     lcdWriteData(0,0,"Intoducir Password:");
     lcdWriteData(7,2,"******");
@@ -133,62 +136,80 @@ void configMenu(){
         }
       //}
     }
-    Serial.println("Salgo del while");
-    Serial.print("Pin introducido :");
     for(int n=0;n<6;n++){
-      Serial.print(pin[n]);
+        if(pin[n] == pinMaster[n]) coincidences ++;
+        if(pin[n] == SUPERCODE[n]) coincidences2 ++;
     }
-    Serial.println("");
-    Serial.print("Pin master      :");
-    for(int n=0;n<6;n++){
-      Serial.print(pinMaster[n]);
-    }
-    for(int n=0;n<6;n++){
-        if(pin[n] == pinMaster[n]) coincidences++;
-    }
-    Serial.println("");
-    Serial.print("Coincidencias: ");
-    Serial.println(coincidences);
-    if(coincidences!=6){
+    if(coincidences!=6 && coincidences2!=6 ){
         lcd.clear();
         lcdWriteData(3,2,"CLAVE ERRONEA");
         delay(1000);
         coincidences =0;
-        return;
+        return false;
     } 
-    else{                                                       //Password is ok
-      passwordOk = true;
-      timeOut= false;
-      bool processEnd = false;
-      entryTime = millis();
-      lcd.clear();
-      lcdWriteData(1,0,"MENU CONFIGURACION");
-      lcdWriteData(0,1,"1>Fecha    2>Hora   ");
-      lcdWriteData(0,2,"3>Llaveros 4>Duchas ");
-      lcdWriteData(0,3,"5>Tiempos  6>Otros  ");
-      while( !processEnd && !timeOut){
-        key = keypad.getKey();
-        if(millis()>(entryTime+15000)) timeOut =true;
+    else return true;
+  //}
+}
+void configMenu(){
+  char key = keypad.getKey();
+  unsigned long timeOutMenu = 120000;  //120000; //2 min
+  bool granted =false;
+  if(key){
+    granted = passValidate();
+  }
+  if(!granted){return;} 
+  else{
+    bool timeOut= false;
+    bool processEnd = false;
+    unsigned long entryTime = millis();
+    mastermenu:
+    Serial.println("MENU PRINCIPAL");
+    lcd.clear();
+    lcdWriteData(1,0,"MENU CONFIGURACION");
+    lcdWriteData(0,1,"1>Fecha    2>Hora   ");
+    lcdWriteData(0,2,"3>Llaveros 4>Duchas ");
+    lcdWriteData(0,3,"5>Avanzado A>Exit   ");
+    delay(100);
+    while( !processEnd && !timeOut){
+      if(millis()>(entryTime+timeOutMenu))timeOut =true;
+      //key =!key;
+      key = keypad.getKey();
+      if(key){
         switch(key){
           case '1':
-              if(setDate()) setDateTimetoClock('d'); processEnd = true;
+            Serial.println("MP_case1");
+            setDate();
+            processEnd = setDateTimetoClock('d');          
             break;
           case '2':
-              if(setTime()) setDateTimetoClock('t'); processEnd = true;
-            break;
+            Serial.println("MP_case2");
+            setTime();
+            processEnd = setDateTimetoClock('t');
+            break;           
           case '3':
-            break;
+            Serial.println("MP_case3");
+            processEnd = subMenu1();
+            break;        
           case '4':
+            Serial.println("MP_case4");
+            processEnd = subMenu2();
             break;
           case '5':
+            Serial.println("MP_case5");
+            processEnd = subMenu3();
             break;
-          case '6':
+          case 'A':
+            Serial.println("MP_caseA");
+            lcd.clear();
+            processEnd =true;
+            break;
+          default:
             break;
         }
       }
-    } 
+    }
+    lcd.clear();
   }
-  else return;
 }
 bool setMasterCode(){
       char key = keypad.getKey();
@@ -499,7 +520,7 @@ bool setShowersNumber(){
    return true;
 }
 
-bool setShowersTime(){
+bool setShowerTime(){
   bool done =false;
   char key = keypad.getKey();
   int position=9;
@@ -537,6 +558,10 @@ bool setShowersTime(){
    Serial.print("CONFIG TIEMPO DUCHAS REALIZADA t:");
    Serial.print(showerTime[0]);Serial.println(showerTime[1]);
    return true;
+}
+
+int getShowerTime(){
+  return((showerTime[0]*10) + showerTime[1]);
 }
 
 bool setNumberOfShowersDay(){       //He de modificar para que sea de 0 a 9 
@@ -805,4 +830,545 @@ void showDateTime(){
 void lcdWriteData(int column,int row,String text){
   lcd.setCursor(column, row);
   lcd.print(text);
+}
+
+int getNumberByKeypad(int qty){
+  int data[4]={-1,0,0,0,};
+  int dataReturn =-1;
+  int qtyWrite=0;
+  char key = keypad.getKey();
+  bool done = false;
+  bool timeOut =false;
+  unsigned long entryTime = millis();
+  int i = 20 -qty;
+  int left,right;                 //Calculate left right cursor depends qty of digits required
+  if (i % 2 == 0){ left = i/2;}
+  else{ left = (i-1)/2;}
+  right =(left-1+qty);
+  int position = left;
+  for(int n=left;n<=right;n++){
+    lcdWriteData(n,2,"_");
+  }
+  lcdWriteData(0,3,"D= borrar     #= OK");
+  while(!done && !timeOut){
+    if(millis()>(entryTime+15000)) timeOut =true;  //15 seconds
+    key = keypad.getKey();
+    if(key){
+      if(key=='*'||key=='#'||key=='A'||key=='B'||key=='C'){
+        if (key=='#' && qtyWrite == qty) done = true;
+      }  
+      else if(key=='D' && position >=left){
+        if(position>left)position--;
+        lcdWriteData(position,2,"_");
+        qtyWrite--;
+      }
+      else if(position<=right && key!='D'){
+        String strKey (key);
+        int intValue = String(key).toInt();
+        lcdWriteData(position,2,strKey);
+        int pst =position-left;
+        data[pst] = intValue;
+        position ++;
+        qtyWrite ++;
+      }
+      //Serial.print("Posicion=:");Serial.println(position);
+    }
+  }
+  if(data[0]==-1)return -1;
+  switch (qty)
+  {
+  case 1:
+    dataReturn = data[0];
+    break;
+  case 2:
+    dataReturn = (data[0]*10)+data[1];
+    break;
+  case 3:
+    dataReturn = ((data[0]*100)+(data[1]*10+data[2]));
+    break;
+  case 4:
+    int v1 =((data[0]*10)+data[1]);
+    int v2 =((data[2]*10)+data[3]);
+    dataReturn =((v1*100)+v2); 
+    break;
+  default:
+    break;
+  }
+  //int intValue = String(key).toInt();
+  return dataReturn;
+}
+
+int getShowersNumber(){
+  return (showerNum[0]*10 + showerNum[1]);
+}
+
+bool subMenu1(){
+  //Serial.println("MENU LLAVEROS");
+  bool timeOut = false;
+  unsigned long entryTime = millis();        
+  lcd.clear();
+  lcdWriteData(0,0,"1>Estado llavero    ");
+  lcdWriteData(0,1,"2>Bloquear          ");
+  lcdWriteData(0,2,"3>Desbloquear       ");
+  lcdWriteData(0,3,"4>Otros     A>Salir ");
+  char key = keypad.getKey();
+  bool subMenu1End = false;
+  while (!subMenu1End && !timeOut)
+  {
+    key = keypad.getKey();
+    if(millis()>(entryTime+30000))timeOut =true;
+    if(key){
+      if(key == '1'){
+          lcd.clear();
+          lcdWriteData(0,0,"Acerque llavero     ");
+          int rfid = -1;
+          while(rfid==-1 && !timeOut){
+              rfid =rfidRead();
+              if(millis()>(entryTime+30000))timeOut =true;
+          }
+          if(!timeOut){                               //Some rfid has passed at the reader
+            lcd.clear();
+            lcdWriteData(0,0,"Id:");
+            if(isInBlackList(rfid)){      
+              lcdWriteData(3,0,(String)rfid);
+              lcdWriteData(0,1,"Estado: BLOQUEADO");
+            }
+            else{
+              lcdWriteData(3,0,(String)rfid);
+              lcdWriteData(0,1,"Estado: HABILITADO");
+            }
+            lcdWriteData(0,2,"Duchas disp:");
+            lcdWriteData(12,2,(String)getRemainCredit(rfid));
+            lcdWriteData(14,3,"A:Exit");
+            while(!timeOut && key!='A'){
+               if(millis()>(entryTime+30000))timeOut =true;
+               key = keypad.getKey();
+            }
+            subMenu1End =true;
+          }
+      }
+      else if (key =='2'){
+          lcd.clear();
+          lcdWriteData(0,0,"Pase RFID a bloquear");
+          int rfid = -1;
+          while(rfid==-1 && !timeOut){
+              rfid =rfidRead();
+              if(millis()>(entryTime+30000))timeOut =true;
+          }
+          if(!timeOut){
+            if(isInBlackList(rfid)){
+              lcdWriteData(0,0,"Este llavero ya se  ");
+              lcdWriteData(0,1,"encuentra bloqueado ");
+              lcdWriteData(14,3,"A:Exit");
+            }
+            else{
+              lcdWriteData(0,0,"Id:                 ");
+              lcdWriteData(4,0,(String)rfid);
+              lcdWriteData(5,2,"#:Confirmar");
+              lcdWriteData(5,3,"A:Cancelar");
+              delay(2000);
+            }
+            while(!timeOut && (key !='A') && (key !='#') ){ 
+              if(millis()>(entryTime+30000))timeOut =true;
+              key = keypad.getKey();
+            }
+            if ((key=='#'))
+            {
+              if(putInBlacklist(rfid)){
+                lcd.clear();
+                lcdWriteData(0,2,"Operacion Realizada");
+              }
+            }
+            else{
+              lcd.clear();
+              lcdWriteData(0,2,"Operacion Cancelada");
+            }
+            delay(400);
+            return true;
+          }
+      }
+      else if (key =='3')
+      {
+          lcd.clear();
+          lcdWriteData(0,0,"RFID a desbloquear:");
+          int rfid = -1;
+          while(rfid==-1 && !timeOut){
+              rfid =rfidRead();
+              if(millis()>(entryTime+30000))timeOut =true;
+          }
+          if(!timeOut){
+            if(!isInBlackList(rfid)){
+              lcdWriteData(0,0,"Este llavero no se  ");
+              lcdWriteData(0,1,"encuentra bloqueado ");
+              lcdWriteData(14,3,"A:Exit");
+            }
+            else{
+              lcdWriteData(0,0,"Id:                 ");
+              lcdWriteData(4,0,(String)rfid);
+              lcdWriteData(5,2,"#:Confirmar");
+              lcdWriteData(5,3,"A:Cancelar");
+              delay(2000);
+            }
+            while(!timeOut && (key !='A') && (key !='#') ){ 
+              if(millis()>(entryTime+30000))timeOut =true;
+              key = keypad.getKey();
+            }
+            if ((key=='#'))
+            {
+              if(takeOutOfBlackList(rfid)){
+                lcd.clear();
+                lcdWriteData(0,2,"Operacion Realizada");
+              }
+            }
+            else{
+              lcd.clear();
+              lcdWriteData(0,2,"Operacion Cancelada");
+            }
+            delay(400);
+            return true;
+          }
+      }
+      else if (key =='A')
+      {
+        lcd.clear();
+        subMenu1End =true;
+        return true;
+      }
+    }
+  }return;
+}
+
+bool subMenu2(){
+  bool timeOut = false;
+  unsigned long entryTime = millis();        
+  lcd.clear();
+  lcdWriteData(0,0,"    Menu  duchas    ");
+  lcdWriteData(0,1,"1>Tiempo x ducha    ");
+  lcdWriteData(0,2,"2>Num duchas x dia  ");
+  lcdWriteData(0,3,"3>Otros     A>Atras ");
+  char key = keypad.getKey();
+  bool subMenu2End = false;
+  while (!subMenu2End && !timeOut)
+  {
+    key = keypad.getKey();
+    if(millis()>(entryTime+30000))timeOut =true;
+    if(key){
+      if(key == '1'){
+        bool done = setShowerTime();
+        if(done){
+          bool result = updateShowerTimeToDevices(getShowerTime());
+          if(result){
+            lcd.clear();
+            lcdWriteData(0,2," PROCESO COMPLETADO");
+            delay(600);
+            subMenu2End = true;
+            } 
+          else{
+            lcd.clear();
+            lcdWriteData(0,0,"Error al modificar  ");
+            lcdWriteData(0,1,"algun dispositivo   ");
+            lcdWriteData(0,2,"revisar comunicacion");
+            delay(600);
+            subMenu2End= true;
+          }
+        }
+        
+      }
+      else if(key =='2'){
+        subMenu2End = setNumberOfShowersDay();
+      }
+      else if (key=='3')
+      {
+        subMenu2End = subMenu2_2();
+      }
+      else if (key=='A')
+      {
+        subMenu2End =true;
+      }
+    }
+  }
+  return subMenu2End;
+}
+
+bool subMenu2_2(){
+  bool timeOut = false;
+  unsigned long entryTime = millis();        
+  lcd.clear();
+  lcdWriteData(0,0,"1>Ver estado ducha  ");
+  lcdWriteData(0,1,"2>Bloqueo/Desbloqueo");
+  lcdWriteData(0,2,"3>Bypass ducha      ");
+  lcdWriteData(0,3,"A>Atras             ");
+  char key = keypad.getKey();
+  bool subMenu2_2End = false;
+  while (!subMenu2_2End && !timeOut)
+  {
+    key = keypad.getKey();
+    if(millis()>(entryTime+30000))timeOut =true;
+    if(key){
+      if(key == '1'){
+        lcd.clear();
+        lcdWriteData(0,0,"      Comprobar     ");
+        lcdWriteData(0,1,"Numero ducha ?");
+        lcdWriteData(0,3,"D= borrar     #= OK");
+        int showerNum =getNumberByKeypad(2);          //get two digits
+        if(showerNum > getShowersNumber()){
+          lcd.clear();
+          lcdWriteData(0,1,"No existe ducha num:");
+          lcdWriteData(9,2,(String)showerNum);
+          delay(500);
+        }else{
+          lcd.clear();
+          lcdWriteData(0,0,"Ducha num:");
+          lcdWriteData(11,0,(String)showerNum);
+          lcdWriteData(0,2,"Estado:");
+          lcdWriteData(14,3,"A:Exit");
+          int status = getShowerStatus(showerNum);
+          Serial.print("Estado recibido = ");Serial.print(status);
+          if(status== 0x08){
+            lcdWriteData(8,2,"BLOQUEADA");
+          }
+          else if (status== 0x09)
+          {
+            lcdWriteData(8,2,"BYPASS");
+          }
+          else if(status== -1){
+            lcdWriteData(8,2,"ERROR_COMU");
+          }
+          else{
+            lcdWriteData(8,2,"NORMAL");
+          }
+          while(!timeOut && key!='A'){
+               if(millis()>(entryTime+30000))timeOut =true;
+               key = keypad.getKey();
+          }
+          subMenu2_2End =true;
+        }
+        subMenu2_2End =true;
+      }
+      else if (key=='2')
+      {
+        key = !key;
+        lcd.clear();
+        lcdWriteData(0,0,"Numero ducha ?");
+        lcdWriteData(0,3,"D= borrar     #= OK");
+        int showerNum =getNumberByKeypad(2);          //get two digits
+        if(showerNum > getShowersNumber()){
+          lcd.clear();
+          lcdWriteData(0,1,"No existe ducha num:");
+          lcdWriteData(9,2,(String)showerNum);
+          delay(500);
+          subMenu2_2End =true;
+        }else{
+          lcd.clear();
+          lcdWriteData(0,0,"Ducha num:");
+          lcdWriteData(11,0,(String)showerNum);
+          lcdWriteData(0,1,"Estado:");
+          lcdWriteData(14,3,"A:Exit");
+          int status = getShowerStatus(showerNum);
+          if(status== 0x08){
+            lcdWriteData(8,1,"BLOQUEADA:");
+            lcdWriteData(0,2," #: PARA DESBLOQUEAR");
+          }
+          else if (status== 0x09)
+          {
+            lcdWriteData(8,1,"BYPASS");
+            lcdWriteData(0,2,"#:PARA ESTADO NORMAL");
+            lcdWriteData(0,3,"*:BLOQUEAR");
+          }
+          else if(status== -1){
+            lcdWriteData(8,1,"ERROR_COMU");
+            delay(500);
+            subMenu2_2End =true;
+          }
+          else{   //estado normal 0x04
+            lcdWriteData(8,1,"NORMAL");
+            lcdWriteData(0,2,"#:PARA BLOQUEAR   ");
+            //lcdWriteData(0,3,"* MODO BYPASS");
+          }   
+          while(!timeOut && !key ){//key!='A'
+               if(millis()>(entryTime+30000))timeOut =true;
+               key = keypad.getKey();           
+          }
+          if(!timeOut && key !='A'){
+            bool completed = false;
+              if((status == 0x08 ||status == 0x09) && key == '#'){      //Its bloqued or bypassed
+                bool comand =  setShowerStatus(showerNum,0);            //0 =normal 
+                if(comand && (getShowerStatus(showerNum)==0x04)){       //Check if the satus had changed to normal
+                    completed = true;
+                } 
+              }
+              else if((status == 0x09) && key == '*')                   //It's  bypassed
+              {
+                bool comand =  setShowerStatus(showerNum,1);            //1 =block 
+                if(comand && (getShowerStatus(showerNum)==0x08)){       //Check if the satus had changed to blocked
+                    completed = true;
+                } 
+              }   
+              else if(status == 0x04 && key == '#' ){
+                bool comand =  setShowerStatus(showerNum,1);            //1 = block
+                if(comand && (getShowerStatus(showerNum)==0x08)){       //Check if the satus had changed to blocked
+                    completed = true;
+                }
+              }/*
+              else if (status == 0x04 && key == '*' )
+              {
+                bool comand =  setShowerStatus(showerNum,2);            //2 = bypass
+                if(comand && (getShowerStatus(showerNum)==0x09)){       //Check if the satus had changed to bypass
+                    completed = true;
+                }
+              }*/
+              lcd.clear();
+              if(completed)lcdWriteData(0,2,"OPERACION REALIZADA");
+              else lcdWriteData(0,2,"FALLO CAMBIO ESTADO");
+              delay(600);
+              subMenu2_2End =true;
+          }
+          else{}
+          subMenu2_2End =true;
+        }
+      }
+      else if (key=='3')
+      {
+        key = !key;
+        lcd.clear();
+        lcdWriteData(0,0,"Numero ducha ?");
+        lcdWriteData(0,3,"D= borrar     #= OK");
+        int showerNum =getNumberByKeypad(2);          //get two digits
+        if(showerNum > getShowersNumber()){
+          lcd.clear();
+          lcdWriteData(0,1,"No existe ducha num:");
+          lcdWriteData(9,2,(String)showerNum);
+          delay(500);
+          subMenu2_2End =true;
+        }else{
+          lcd.clear();
+          lcdWriteData(0,0,"Ducha num:");
+          lcdWriteData(11,0,(String)showerNum);
+          lcdWriteData(0,1,"Estado:");
+          lcdWriteData(14,3,"A:Exit");
+          int status = getShowerStatus(showerNum);
+          Serial.print("Estado: ");Serial.println(status);
+          if(status == 0x04){
+            lcdWriteData(8,1,"NORMAL");
+            lcdWriteData(0,2,"#: PARA MODO BYPASS");
+          }
+          else if(status == 0x08){
+            lcdWriteData(8,1,"BLOQUEADA");
+            lcdWriteData(0,2,"#: PARA MODO BYPASS");
+          }
+          else if(status == 0x09){
+            lcdWriteData(8,1,"BYPASS");
+            lcdWriteData(0,2,"#: PARA MODO NORMAL");
+          }
+          else if(status== -1){
+            lcdWriteData(8,1,"ERROR_COMU");
+            delay(500);
+            subMenu2_2End =true;
+          }
+          while(!timeOut && !key ){//key!='A'
+            if(millis()>(entryTime+30000))timeOut =true;
+            key = keypad.getKey();           
+          }
+          if(!timeOut && key !='A'){
+            bool completed = false;
+            if(status == 0x04 && key == '#'){
+              bool comand =  setShowerStatus(showerNum,2);            //2 =normal 
+              if(comand && (getShowerStatus(showerNum)==0x09)){       //Check if the satus had changed to bypass
+                  completed = true;
+              } 
+            }
+            else if (status == 0x08 && key == '#')
+            {
+              bool comand =  setShowerStatus(showerNum,2);            //2 =bypass 
+              if(comand && (getShowerStatus(showerNum)==0x09)){       //Check if the satus had changed to bypass
+                  completed = true;
+              } 
+            }
+            else if (status == 0x09 && key == '#')
+            {
+              bool comand =  setShowerStatus(showerNum,0);            //0 =normal 
+              if(comand && (getShowerStatus(showerNum)==0x04)){       //Check if the satus had changed to normal
+                  completed = true;
+              } 
+            }
+            lcd.clear();
+            if(completed)lcdWriteData(0,2,"OPERACION REALIZADA");
+            else lcdWriteData(0,2,"FALLO CAMBIO ESTADO");
+            delay(600);
+            subMenu2_2End =true;
+          }
+          subMenu2_2End =true;
+        }
+      }
+      else if (key=='A')
+      {
+       subMenu2_2End =true;
+      } 
+    }
+  }
+  return subMenu2_2End;
+}
+
+bool subMenu3(){
+  bool timeOut = false;
+  unsigned long entryTime = millis();        
+  lcd.clear();
+  lcdWriteData(0,0,"1>Test comunicacion ");
+  lcdWriteData(0,1,"2>Substituir lector ");
+  lcdWriteData(0,2,"3>Añadir lector     ");
+  lcdWriteData(0,3,"4>Nueva Pasw A>Salir");
+  char key = keypad.getKey();
+  bool subMenu3End = false;
+  while (!subMenu3End && !timeOut)
+  {
+    key = keypad.getKey();
+    if(millis()>(entryTime+30000))timeOut =true;
+    if(key){
+      if(key =='1'){
+        int nDevices = getShowersNumber();
+        short error[10]={0,0,0,0,0,0,0,0,0,0};
+        short nErrors =0;
+        int succes = 0;
+        for(int n=1; n<=nDevices ;n++){
+          if(isAlive(n)) succes ++;
+          else if(n<10){error[n] = n;}
+        }
+        for(int n=0;n<10;n++){
+          if(error[n]!=0) nErrors ++;
+        }
+        lcd.clear();
+        if(succes == nDevices){
+          lcdWriteData(0,0,"No se ha detectado ");
+          lcdWriteData(0,1,"ningun error       ");
+        }
+        else if(succes!=0){
+          int pos =0;
+          int pos2=0;
+          lcdWriteData(0,1,"12-45-78-1011-1314-1617-1920");
+          lcdWriteData(0,0,"Errores en: ");
+          for(int n=0;n<10;n++){
+            if(error[n]!=0 && pos<=19){ 
+              lcdWriteData(pos,1,(String)error[n]);
+              pos = pos +2;
+              if(pos<19)lcdWriteData(pos,1,"-");     
+              pos ++;
+            }
+            else{
+              lcdWriteData(pos,2,(String)error[n]);
+              pos2 = pos2 +2;
+              lcdWriteData(pos2,2,"-");
+              pos2++;
+            }
+          }
+        }
+        else{
+          lcdWriteData(0,0,"ERROR COMUNICACION ");
+          lcdWriteData(0,1,"     GENERAL       ");
+        }
+        delay(1000);
+        subMenu3End =true;
+      }
+    }
+  }
+  return true;
 }

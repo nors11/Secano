@@ -1,6 +1,5 @@
-#include <Arduino.h>
+//#include <Arduino.h>
 
-const int SUPERCODE = 0700164;
-
+const char SUPERCODE[6]={'0','7','0','1','6','4'};
 /* int MASTERCODE = 1234;  */
 /* int codigo = 255; */
