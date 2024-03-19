@@ -90,7 +90,6 @@ boolean validTag(byte tag[16]){
   return secret == tag[4];
 }
 
-
 void setup() {
   // put your setup code here, to run once:
   Serial.begin(9600);
@@ -227,7 +226,7 @@ bool isAlive(int slaveNumber){
     else return true;            
 }
 
-bool isAliveTest(int slaveNumber){
+bool isAliveDisp(int slaveNumber){
     sendCommand(slaveNumber,UPDATE_STATUS,0);
     int response = recibirRespuesta(slaveNumber);
     Serial.print("Slave n:");Serial.print(slaveNumber);Serial.print("Res: ");Serial.println(response);
@@ -337,6 +336,15 @@ bool restoreData(){
   }
   restoreMasterCode(codeRestored, sizeof(codeRestored));
   //pinMaster[0] = 'a';
+}
+
+bool changeDisp(int newId){
+  int defaultDeviceId = 99;
+  sendCommand(defaultDeviceId,CHANGE_YOUR_ID,newId);   //0x0E = CHANGE_YOUR_ID
+  int response = recibirRespuesta(newId);
+  if(response!=RESPONSE_STORED_OK){return false;}
+
+  return true;
 }
 /*  Serial.print("codigo antes de ir a funcion = ");Serial.println(codigoMaster);
   int *dir;

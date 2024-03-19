@@ -9,8 +9,9 @@
 #include <MFRC522.h>
 #include <AESLib.h>
 #include <SoftwareSerial.h>
+#include <EEPROM.h>
 #define HEAD 0xAA
-#define MY_SLAVE_ID 0x01
+//#define MY_SLAVE_ID 0x01
 #define TAIL 0xFE
 #define RS485_PIN_MODE 8         // HIGH -> Transmision; LOW-> recepcion
 #define ERROR_LED 2
@@ -35,6 +36,7 @@
 #define CHANGE_YOUR_ID      0x0E
 #define ERROR               0x0F
 
+int MY_SLAVE_ID = 0x01;
 byte buffer[18];
 const int RST_PIN = 9;
 const int SS_PIN = 10;
@@ -48,6 +50,7 @@ unsigned long lastActiveTag;      //Last tag number that the shower had autorith
 short lastStatusPulses=0;
 bool pendingToValidateTag = false;
 bool pendingToConfirmShowerEnd = false;
+bool booted =false;
 enum validStatus {
   active,
   inactive,
@@ -130,6 +133,19 @@ void setup()
   }
   for(int n=0;n<20;n++){          //Inicilize array content
     activeTimes[20]=0;
+  }
+  /*
+  const int ID_TO_STORE = 99;
+  EEPROM.write(1,true); //Si ejecuta esto el sistema da por completo el primer inicio
+  EEPROM.write(10,ID_TO_STORE); 
+  */
+  if(!EEPROM.read(1)){ //booted =false;
+    MY_SLAVE_ID = 99;
+
+  }
+  else{
+    MY_SLAVE_ID = EEPROM.read(10);
+    Serial.print("My ID:");Serial.println(MY_SLAVE_ID);
   }
 
 }
@@ -362,6 +378,13 @@ void ejecutarComando(){
           maxiumShowerTime = (buff[3] * 1000);
           sendResponse(RESPONSE_STORED_OK);
         }else{sendResponse(ERROR);}
+      break;
+    case CHANGE_YOUR_ID:
+        if(buff[3]!=0){
+            EEPROM.write(10,buff[3]);
+            MY_SLAVE_ID = buff[3];
+            sendResponse(RESPONSE_STORED_OK);
+        }
       break;
     case CMD_LED_ON:                      // Encender Led
       digitalWrite( LED_BUILTIN, HIGH );  

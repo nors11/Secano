@@ -27,7 +27,7 @@ int rfidRead();
 short getRemainCredit(int);
 void showDateTime();
 bool isAlive(int);
-bool isAliveTest(int);
+bool isAliveDisp(int);
 bool isInBlackList(int);
 bool putInBlacklist(int);
 bool takeOutOfBlackList(int);
@@ -39,6 +39,7 @@ bool subMenu2_2();
 bool restoreData();
 bool saveDataToEEPROM(int,int);
 bool factoryReset();
+bool changeDisp(int newId);
 
 
 #endif

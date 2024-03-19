@@ -1388,7 +1388,7 @@ bool subMenu3(){
         short nErrors =0;
         int succes = 0;
         for(int n=1; n<=nDevices ;n++){
-          if(isAliveTest(n)) succes ++;
+          if(isAliveDisp(n)) succes ++;
           else if(n<10){
             error[nErrors] = n;
             nErrors ++;
@@ -1427,7 +1427,42 @@ bool subMenu3(){
         subMenu3End =true;
       }
       else if(key =='2'){
-
+          lcd.clear();
+          lcdWriteData(0,0,"Numero a sustituir: ");
+          int showerNum = getNumberByKeypad(2);
+          if(showerNum > getShowersNumber()){
+            lcd.clear();
+            lcdWriteData(0,0,"No existe lector num");
+            lcdWriteData(9,2,(String)showerNum);
+            delay(500);
+          }else if(isAliveDisp(showerNum)){
+            lcd.clear();
+            lcdWriteData(0,0,"       ERROR        ");
+            lcdWriteData(0,1,"Lector se encuentra ");
+            lcdWriteData(0,2,"en linea,");
+            lcdWriteData(0,3,"desconectelo primero");      
+            delay(1200);
+          }else if(!isAliveDisp(99)){
+            lcd.clear();
+            lcdWriteData(0,0,"       ERROR        ");
+            lcdWriteData(0,1,"No se encuentran    ");
+            lcdWriteData(0,2,"nuevos dispositivos,");
+            lcdWriteData(0,3,"para enlazar");      
+            delay(1500);
+          }
+          else{
+            bool result = changeDisp(showerNum);
+            if(result){
+            lcd.clear();
+            lcdWriteData(0,2," OPERACION REALIZADA");
+            }
+            else{
+            lcd.clear();
+            lcdWriteData(0,2,"       ERROR        ");
+            }
+            delay(1000);
+          }
+          subMenu3End = true;
       }
       else if(key =='3'){
         subMenu3End = true;
