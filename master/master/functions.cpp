@@ -84,6 +84,7 @@ void setFirstConfig(){
   }
   saveDataToEEPROM(1,0); //FirstBoot = false;
 }
+
 bool passValidate(){
   char key = keypad.getKey();
   bool passwordOk = false;
@@ -1387,7 +1388,7 @@ bool subMenu3(){
         short nErrors =0;
         int succes = 0;
         for(int n=1; n<=nDevices ;n++){
-          if(isAlive(n)) succes ++;
+          if(isAliveTest(n)) succes ++;
           else if(n<10){
             error[nErrors] = n;
             nErrors ++;

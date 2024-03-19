@@ -27,6 +27,7 @@ int rfidRead();
 short getRemainCredit(int);
 void showDateTime();
 bool isAlive(int);
+bool isAliveTest(int);
 bool isInBlackList(int);
 bool putInBlacklist(int);
 bool takeOutOfBlackList(int);

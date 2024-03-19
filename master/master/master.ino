@@ -70,8 +70,9 @@ int recibirRespuesta( byte esclavo ){
 
   if( trama[5] != TAIL )    // error en trama
     return -1;
-  if( trama[4] == 254) 
-    return -1;  
+
+  //if( trama[4] == 254) 
+    //return -1;  
 
   return trama[4]; 
 }
@@ -110,7 +111,7 @@ void setup() {
     Serial.println("ES FIRST BOOT");
     for(int n=0;n<maxUsers;n++){
       blackList[n]=false;
-      remainCredit[n]=2;
+      remainCredit[n]=5;
     }
     int space = EEPROM.length();
     Serial.print("Espacio EEPROM: ");Serial.println(space);
@@ -124,51 +125,57 @@ void setup() {
 }
 
 void loop() {
-  if(firstBoot){setFirstConfig();}
-  firstBoot =false;
+  if(firstBoot){
+    setFirstConfig();
+    firstBoot =false;
+  }
   configMenu();
-  showDateTime(); 
+  showDateTime();
+  talkWithFamily(); 
   delay(10);
 
   /*int tagPresent = rfidRead();   devuelve numero de llavero leido
   if (tagPresent != -1)
   {
     Serial.print("Id llavero :");Serial.println(tagPresent);
-  }*/
-  
-   
-  /*
-  for(int nSlave=1;nSlave<=showersNumber;nSlave++){
-    sendCommand(nSlave, UPDATE_STATUS,0);
-    Serial.print( "Num_Esclavo: " );Serial.print(nSlave);
-    int response = recibirRespuesta(nSlave);
+  }*/  
+  //delay(1000);
+
+}
+
+void talkWithFamily(){
+    //for(int nSlave=1;nSlave<=showersNumber;nSlave++){
+      for(int nSlave=1;nSlave<=2;nSlave++){
+        sendCommand(nSlave, UPDATE_STATUS,0);
+        //Serial.print( "Num_Esclavo: " );Serial.print(nSlave);
+        int response = recibirRespuesta(nSlave);
         if( response == -1 ){
-          Serial.println( " ->No se recibio respuesta" );
+          //Serial.println( " ->No se recibio respuesta" );
         }        
         else{
-          Serial.print( " -> respuesta:" );
-          Serial.println(response);
+          //Serial.print( " -> respuesta:" );
+          //Serial.println(response);
           switch(response){
             case RESPONSE_NO_ACTIVITY:
-              Serial.println( "NO_ACTIVITY" );
+              //Serial.println( "NO_ACTIVITY" );
               break;
             case REQUEST_VALIDATE:
-              Serial.println( "REQUEST_VALIDATE" );
-              Serial.print( "User ID:" ); Serial.print(trama[2]);Serial.println(trama[3]);
+              //Serial.println( "REQUEST_VALIDATE" );
+              //Serial.print( "User ID:" ); Serial.print(trama[2]);Serial.println(trama[3]);
               if(isKeyAccepted()) sendCommand(nSlave,RESPONSE_ACCEPT,0);
               else sendCommand(nSlave,RESPONSE_REJECT,0);
               break;
             case REQUEST_STORE_END:
-              Serial.println( "REQUEST_STORE_END" );
-              Serial.print( "User ID:" ); Serial.print(trama[2]);Serial.println(trama[3]);
+              //Serial.println( "REQUEST_STORE_END" );
+              //Serial.print( "User ID:" ); Serial.print(trama[2]);Serial.println(trama[3]);
               remainCredit[getUserKey()]--;    //= false;
               sendCommand(nSlave,RESPONSE_STORED_OK,0);
               break;
             case SHOWER_BLOCKED:
-              Serial.println( "Estado Bloqueada" );
+              //Serial.println( "Estado Bloqueada" );
               break;
             case SHOWER_FORCED:
-              Serial.println( "Estado Bypass" );
+              //Serial.println( "Estado Bypass" );
               break;
             default:
               break;
@@ -182,21 +189,19 @@ void loop() {
           }
           else if(trama[4]==0x02){
               //Aqui esclavo me esatria diciendo que este tag ha realizado una ducha y debo incrementar en memoria
-          }
-        }   
+          }*/
+        }
+        delay(1);   
   }
-  delay(2000);*/
-  //EEPROM.put( eeAddress, customVar );
-  
-  //delay(1000);
 
 }
+
 bool isKeyAccepted(){
-  Serial.print( "User ID EN HEX  :" ); Serial.print(trama[2],HEX);Serial.println(trama[3],HEX);
+  //Serial.print( "User ID EN HEX  :" ); Serial.print(trama[2],HEX);Serial.println(trama[3],HEX);
   bool result = true;
   int dataA= trama[2];
   int dataB= trama[3];
-  Serial.print( "User ID EN ACCP_B:" ); Serial.print(dataA);Serial.println(dataB);
+  //Serial.print( "User ID EN ACCP_B:" ); Serial.print(dataA);Serial.println(dataB);
   long userKey= (dataA*1000)+dataB;
   Serial.print("Tag usuario convertido: ");Serial.println(userKey);
   if(blackList[userKey] || remainCredit[userKey]==0){result = false;}
@@ -221,6 +226,15 @@ bool isAlive(int slaveNumber){
     if( response == -1 ) return false;
     else return true;            
 }
+
+bool isAliveTest(int slaveNumber){
+    sendCommand(slaveNumber,UPDATE_STATUS,0);
+    int response = recibirRespuesta(slaveNumber);
+    Serial.print("Slave n:");Serial.print(slaveNumber);Serial.print("Res: ");Serial.println(response);
+    if( response == -1 || response ==254) return false;
+    else return true;            
+}
+
 
 bool isInBlackList(int id){
   return (blackList[id]);

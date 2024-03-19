@@ -10,7 +10,7 @@
 #include <AESLib.h>
 #include <SoftwareSerial.h>
 #define HEAD 0xAA
-#define MY_SLAVE_ID 0x02
+#define MY_SLAVE_ID 0x01
 #define TAIL 0xFE
 #define RS485_PIN_MODE 8         // HIGH -> Transmision; LOW-> recepcion
 #define ERROR_LED 2
@@ -292,8 +292,8 @@ void loop()
   
   else{
       byte incoming = RS485.read();
-      Serial.print("Recibido: ");
-      Serial.println(incoming);
+      //Serial.print("Recibido: ");
+      //Serial.println(incoming);
         
       if( idx == 0 ){           // principio de trama
         if( incoming != HEAD )  // trama incorrecta
@@ -316,7 +316,7 @@ void loop()
 }
 
 void ejecutarComando(){
-  Serial.println("Ejectutando comando!!!");
+  //Serial.println("Ejectutando comando!!!");
   if ( buff[1] != MY_SLAVE_ID ) // el mensaje es para otro esclavo
     return;
 
