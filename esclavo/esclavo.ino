@@ -43,8 +43,8 @@ const int SS_PIN = 10;
 int button = 8;
 int action = 0;
 unsigned long maxiumShowerTime = 30000;//1min ahora para test-----   //Maxium time that shower can be active, master must define it
-unsigned long onTimeStart;        //Time (millis) at shower system turns on
-unsigned long totalOnTime;        //Time (millis) tha the shower has been active 
+unsigned long onTimeStart=0;        //Time (millis) at shower system turns on
+unsigned long totalOnTime=0;        //Time (millis) tha the shower has been active 
 unsigned long activeTimes[20];
 unsigned long lastActiveTag;      //Last tag number that the shower had autorithed 
 short lastStatusPulses=0;
@@ -172,10 +172,12 @@ unsigned long getTagNumber(byte buffer[16]){
     c = a * 1000 + b;
     return c;
 }
+
 unsigned long calculateRestTime(){
     int n =0;
     boolean addRegistrer = false;
     unsigned long time = millis()-onTimeStart;
+    if(onTimeStart==0) return maxiumShowerTime;
     do{
       if(activeTimes[n]==0){
         activeTimes[n]=time;
@@ -239,6 +241,7 @@ void loop()
             for(int n=0;n<20;n++){                                                        //Restore array with time periods
               activeTimes[n]=0;;
             }
+            onTimeStart=0;
             showerOff();
             sendInfoToMaster(0,lastActiveTag);
           }
