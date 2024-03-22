@@ -40,6 +40,7 @@ long usersKey = 1300;
 bool blackList[maxUsers];
 short remainCredit[maxUsers];
 int showersNumber=2;
+int qtyShowersXDay = 2;
 int maxV =3000;
 bool firstBoot = true;
 MFRC522 mfrc522(SS_PIN, RST_PIN);
@@ -313,6 +314,13 @@ bool setShowerStatus(int id,int st){
   else return false;
 }
 
+bool updateQtyShowersXDay(int qty){
+  qtyShowersXDay= qty;
+  for(int n=0;n<=maxUsers;n++){
+    remainCredit[n] = qty;
+  }
+  return true;
+}
 bool updateShowerTimeToDevices(int time){
   int succes =0;
   for(int nSlave=1;nSlave<=showersNumber;nSlave++){

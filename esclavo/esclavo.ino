@@ -135,16 +135,16 @@ void setup()
     activeTimes[20]=0;
   }
   /*
-  const int ID_TO_STORE = 99;
+  const int ID_TO_STORE = 1;
   EEPROM.write(1,true); //Si ejecuta esto el sistema da por completo el primer inicio
   EEPROM.write(10,ID_TO_STORE); 
   */
   if(!EEPROM.read(1)){ //booted =false;
     MY_SLAVE_ID = 99;
-
   }
   else{
     MY_SLAVE_ID = EEPROM.read(10);
+    maxiumShowerTime = EEPROM.read(20);
     Serial.print("My ID:");Serial.println(MY_SLAVE_ID);
   }
 
@@ -287,7 +287,7 @@ void loop()
           if(getTagNumber(buffer) == lastActiveTag){                                            //The tag readed is the same that have the shower at this moment registered
               showerOff();
               unsigned long spareTime = calculateRestTime();                                    //calculates the remaining time left for the user
-              sendInfoToMaster(spareTime,lastActiveTag);                                        //Send info to master
+              if(spareTime!=maxiumShowerTime)sendInfoToMaster(spareTime,lastActiveTag);         //Send info to master
               totalOnTime = 0;                                                                  //
               onTimeStart=0;
               lastWaterStatus = noRunningWater;
@@ -376,6 +376,7 @@ void ejecutarComando(){
     case CHANGE_SHOWER_TIME:
         if(buff[3]!=0){
           maxiumShowerTime = (buff[3] * 1000);
+          EEPROM.write(20,maxiumShowerTime);
           sendResponse(RESPONSE_STORED_OK);
         }else{sendResponse(ERROR);}
       break;

@@ -656,7 +656,7 @@ bool setNumberOfShowersDay(){       //He de modificar para que sea de 0 a 9
    lcdWriteData(0,2,"  DATOS GUARDADOS  ");
    Serial.print("CONFIG NUM DUCHAS *DIA REALIZADA n: ");
    Serial.print(numShowersDay[0]);Serial.println(numShowersDay[1]);
-   return true;
+   return updateQtyShowersXDay((numShowersDay[0]*10)+numShowersDay[1]);
 }
 
 bool dateCheckers(int p,char c){ 

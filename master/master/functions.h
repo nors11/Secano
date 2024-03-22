@@ -32,6 +32,7 @@ bool isInBlackList(int);
 bool putInBlacklist(int);
 bool takeOutOfBlackList(int);
 bool updateShowerTimeToDevices(int);
+bool updateQtyShowersXDay(int);
 bool subMenu1();
 bool subMenu2();
 bool subMenu3();
