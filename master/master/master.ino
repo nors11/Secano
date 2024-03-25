@@ -35,8 +35,8 @@ byte trama[5], idx;
 const int RST_PIN = 48;               //RFID RESET
 const int SS_PIN = 53;                //RFID SDA
 //int codigoMaster = 11223;
-const int maxUsers = 1300;
-long usersKey = 1300;
+const int maxUsers = 1400;
+long usersKey = 1400;
 bool blackList[maxUsers];
 short remainCredit[maxUsers];
 int showersNumber=2;
@@ -106,7 +106,7 @@ void setup() {
   Serial3.begin(9600);                // Configurar Serial3 para el bus RS-485
 
   firstBoot = EEPROM.read(1);  //Poner a 1 si es firts boot
-  //EEPROM.write(1,1);
+  //EEPROM.write(1,1); //posicion,dato
   if(firstBoot){
     Serial.println("ES FIRST BOOT");
     for(int n=0;n<maxUsers;n++){

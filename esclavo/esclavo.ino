@@ -177,7 +177,7 @@ unsigned long calculateRestTime(){
     int n =0;
     boolean addRegistrer = false;
     unsigned long time = millis()-onTimeStart;
-    if(onTimeStart==0) return maxiumShowerTime;
+    if(onTimeStart==0) return maxiumShowerTime;   // Se activó ducha pero no se ha usado agua lo puedo comentar para simular ressta de numDuchas en consola
     do{
       if(activeTimes[n]==0){
         activeTimes[n]=time;
@@ -378,7 +378,8 @@ void ejecutarComando(){
       break;
     case CHANGE_SHOWER_TIME:
         if(buff[3]!=0){
-          maxiumShowerTime = (buff[3] * 1000);
+          maxiumShowerTime = (buff[3] * 60000);
+          Serial.print("Tiempo a guardar:");Serial.println(maxiumShowerTime);
           EEPROM.write(20,maxiumShowerTime);
           sendResponse(RESPONSE_STORED_OK);
         }else{sendResponse(ERROR);}

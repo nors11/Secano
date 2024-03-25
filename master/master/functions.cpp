@@ -46,7 +46,7 @@ void setupConfig(){
 
 void setFirstConfig(){
   int configDone = false;
-  bool checkList[4]={false,false,false,false};
+  bool checkList[6]={false,false,false,false,false,false};
   lcdWriteData(3,0,"- SECANO 241 -");
   lcdWriteData(3,2,"PULSAR # PARA");
   lcdWriteData(1,3,"CONFIGURAR SISTEMA");
@@ -55,8 +55,9 @@ void setFirstConfig(){
     char key = keypad.getKey();  
     if (key) {Serial.println(key);  } 
     if(key=='#'){
-      
-      checkList[0] = setMasterCode();
+      while(!checkList[0]){
+        checkList[0] = setMasterCode();
+      }
       if(checkList[0]){
         Serial.println("Fase 1 ok");
         lcd.clear();
@@ -71,7 +72,7 @@ void setFirstConfig(){
         }
         configDone = true;  // ELIMIANR SOLO PARA PRUEBAS-------------------------------!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
       }
-      /*
+      
       checkList[1] = setDate();
       checkList[2] = setTime();
       if(checkList[1]&&checkList[2])setDateTimetoClock('c'); //c=  update date and time 
@@ -79,7 +80,13 @@ void setFirstConfig(){
       checkList[3] = setShowersNumber();                    
       checkList[4] = setShowerTime();
       updateShowerTimeToDevices(getShowerTime());
-      checkList[5] = setNumberOfShowersDay();*/
+      checkList[5] = setNumberOfShowersDay();
+      delay(500);
+      lcd.clear();
+      delay(500);
+      lcdWriteData((0),2,"SISTEMA CONFIGURADO");
+      delay(1000);
+      lcd.clear();
     }
   }
   saveDataToEEPROM(1,0); //FirstBoot = false;
@@ -547,6 +554,22 @@ bool setShowersNumber(){
   lcdWriteData(9,2,"00");
   lcdWriteData(0,3,"D= borrar     #= OK");
   while(!done || key!='#'){
+      if(position<11){
+        switch(position){
+          case 9:
+            lcdWriteData(position,2," ");
+            delay(100);
+            lcdWriteData(position,2,"0");
+            delay(100);
+            break;
+          case 10:
+            lcdWriteData(position,2," ");
+            delay(100);
+            lcdWriteData(position,2,"0");
+            delay(100);
+            break;
+        }
+      }
        key = keypad.getKey();
        if(key){
         if(key=='*'||key=='#'||key=='A'||key=='B'||key=='C'){}  //que pasa aqui???
@@ -585,6 +608,22 @@ bool setShowerTime(){
   lcdWriteData(9,2,"__");
   lcdWriteData(0,3,"D= borrar     #= OK");
   while(!done || key!='#'){
+        if(position<11){
+          switch(position){
+            case 9:
+              lcdWriteData(position,2," ");
+              delay(100);
+              lcdWriteData(position,2,"0");
+              delay(100);
+              break;
+            case 10:
+              lcdWriteData(position,2," ");
+              delay(100);
+              lcdWriteData(position,2,"0");
+              delay(100);
+              break;
+          }
+       }
        key = keypad.getKey();
        if(key){
         if(key=='*'||key=='#'||key=='A'||key=='B'||key=='C'){}  //que pasa aqui???
@@ -1500,6 +1539,7 @@ bool subMenu3(){
                   lcdWriteData(0,0," SISTEMA RESETEADO ");
                   lcdWriteData(0,2," REINICIE CONSOLA  ");
                   factoryReset();
+                  while(true){}// BUCLE INFINITO -- HAN DE QUITAR CORRIENTE
                   //pongo aqui un while para que no salga hasta que reinicien sistema???
                   delay(1000);
                   subMenu3End = true;

@@ -10,8 +10,8 @@ void lcdWriteData(int row,int column,String text);
 bool setMasterCode();
 bool setDate();
 bool setTime();
-bool setShowersNumber();        //falta parpadeo digito + error solo digito 1 lo coge
-bool setShowerTime();          //falta parpadeo digito
+bool setShowersNumber();        
+bool setShowerTime();          
 int  getShowerTime();
 bool setNumberOfShowersDay();   //He de modificar para que sea de 0 a 9 +falta parpadeo digito
 bool dateCheckers(int,char);
