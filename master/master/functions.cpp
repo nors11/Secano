@@ -591,6 +591,8 @@ bool setShowersNumber(){
         Serial.print("Posicion=:");Serial.println(position);
        }
    }
+   saveDataToEEPROM(4,showerNum[0]);
+   saveDataToEEPROM(5,showerNum[1]);
    lcd.clear();
    lcdWriteData(0,2,"  TIEMPO GUARDADO  ");
    Serial.print("CONFIG NUM DUCHAS REALIZADA t:");
@@ -647,6 +649,8 @@ bool setShowerTime(){
         Serial.print("Posicion=:");Serial.println(position);
        }
    }
+   saveDataToEEPROM(6,showerTime[0]);
+   saveDataToEEPROM(7,showerTime[1]);
    lcd.clear();
    lcdWriteData(0,2,"  TIEMPO GUARDADO  ");
    Serial.print("CONFIG TIEMPO DUCHAS REALIZADA t:");
@@ -691,6 +695,8 @@ bool setNumberOfShowersDay(){       //He de modificar para que sea de 0 a 9
         Serial.print("Posicion=:");Serial.println(position);
        }
    }
+   saveDataToEEPROM(8,numShowersDay[0]);
+   saveDataToEEPROM(9,numShowersDay[1]);
    lcd.clear();
    lcdWriteData(0,2,"  DATOS GUARDADOS  ");
    Serial.print("CONFIG NUM DUCHAS *DIA REALIZADA n: ");
@@ -1565,4 +1571,14 @@ bool factoryReset(){
 
   saveDataToEEPROM(1,1);
 
+}
+
+bool restoreValues(){
+  showerNum[0]      = getDataOfEEPROM(4);
+  showerNum[1]      = getDataOfEEPROM(5);
+  showerTime[0]     = getDataOfEEPROM(6);
+  showerTime[1]     = getDataOfEEPROM(7);
+  numShowersDay[0]  = getDataOfEEPROM(8);
+  numShowersDay[1]  = getDataOfEEPROM(9);
+  return true;
 }

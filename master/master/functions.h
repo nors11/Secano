@@ -38,7 +38,9 @@ bool subMenu2();
 bool subMenu3();
 bool subMenu2_2();
 bool restoreData();
+bool restoreValues();               //pòdria comprobar dejando variables por defecto en 0 y ver lectura si es diferente
 bool saveDataToEEPROM(int,int);
+int  getDataOfEEPROM(int);
 bool factoryReset();
 bool changeDisp(int newId);
 

@@ -336,6 +336,10 @@ bool saveDataToEEPROM(int pos,int data){
   return true;
 }
 
+int getDataOfEEPROM(int pos){
+  return(EEPROM.read(pos));
+}
+
 bool restoreData(){
 
   char codeRestored[6]={'0','0','0','0','0','0'};
@@ -343,6 +347,8 @@ bool restoreData(){
     codeRestored[n] = EEPROM.read((n+10));
   }
   restoreMasterCode(codeRestored, sizeof(codeRestored));
+
+  return restoreValues();
   //pinMaster[0] = 'a';
 }
 

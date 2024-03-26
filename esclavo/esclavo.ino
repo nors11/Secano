@@ -135,7 +135,7 @@ void setup()
     activeTimes[20]=0;
   }
   /*
-  const int ID_TO_STORE = 1;
+  const int ID_TO_STORE = 3;
   EEPROM.write(1,true); //Si ejecuta esto el sistema da por completo el primer inicio
   EEPROM.write(10,ID_TO_STORE); 
   */
@@ -379,7 +379,7 @@ void ejecutarComando(){
     case CHANGE_SHOWER_TIME:
         if(buff[3]!=0){
           maxiumShowerTime = (buff[3] * 60000);
-          Serial.print("Tiempo a guardar:");Serial.println(maxiumShowerTime);
+          //Serial.print("Tiempo a guardar:");Serial.println(maxiumShowerTime);
           EEPROM.write(20,maxiumShowerTime);
           sendResponse(RESPONSE_STORED_OK);
         }else{sendResponse(ERROR);}
