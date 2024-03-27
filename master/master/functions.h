@@ -21,6 +21,7 @@ bool setDateTimetoClock(char);
 int convertDataTime(int[8],int[6]);
 int getNumberByKeypad(int);
 int getShowersNumber();
+int getNumberOfShowersDay();
 int getShowerStatus(int);       //shwer id
 bool setShowerStatus(int,int);  //shower id, status
 int rfidRead();

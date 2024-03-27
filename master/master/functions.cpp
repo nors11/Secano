@@ -1007,6 +1007,10 @@ int getShowersNumber(){
   return (showerNum[0]*10 + showerNum[1]);
 }
 
+int getNumberOfShowersDay(){
+   return (numShowersDay[0]*10 + numShowersDay[1]);
+}
+
 bool subMenu1(){
   //Serial.println("MENU LLAVEROS");
   bool timeOut = false;

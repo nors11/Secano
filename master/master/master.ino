@@ -348,7 +348,12 @@ bool restoreData(){
   }
   restoreMasterCode(codeRestored, sizeof(codeRestored)); 
   showersNumber = (getDataOfEEPROM(4)*10)+getDataOfEEPROM(5);
-  return restoreValues();
+  restoreValues();
+  qtyShowersXDay = getNumberOfShowersDay();
+  for(int n=0;n<maxUsers;n++){
+    remainCredit[n]=qtyShowersXDay;
+  }
+  return true;
   //pinMaster[0] = 'a';
 }
 
@@ -357,7 +362,6 @@ bool changeDisp(int newId){
   sendCommand(defaultDeviceId,CHANGE_YOUR_ID,newId);   //0x0E = CHANGE_YOUR_ID
   int response = recibirRespuesta(newId);
   if(response!=RESPONSE_STORED_OK){return false;}
-
   return true;
 }
 /*  Serial.print("codigo antes de ir a funcion = ");Serial.println(codigoMaster);
