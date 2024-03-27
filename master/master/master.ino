@@ -145,7 +145,7 @@ void loop() {
 
 void talkWithFamily(){
     //for(int nSlave=1;nSlave<=showersNumber;nSlave++){
-      for(int nSlave=1;nSlave<=2;nSlave++){
+      for(int nSlave=1;nSlave<=getShowersNumber();nSlave++){
         sendCommand(nSlave, UPDATE_STATUS,0);
         //Serial.print( "Num_Esclavo: " );Serial.print(nSlave);
         int response = recibirRespuesta(nSlave);
@@ -346,8 +346,8 @@ bool restoreData(){
   for(int n=0;n<6;n++){
     codeRestored[n] = EEPROM.read((n+10));
   }
-  restoreMasterCode(codeRestored, sizeof(codeRestored));
-
+  restoreMasterCode(codeRestored, sizeof(codeRestored)); 
+  showersNumber = (getDataOfEEPROM(4)*10)+getDataOfEEPROM(5);
   return restoreValues();
   //pinMaster[0] = 'a';
 }

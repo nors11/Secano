@@ -607,7 +607,8 @@ bool setShowerTime(){
   Serial.println("CFG SHOWERS TIME");
   lcd.clear();
   lcdWriteData(0,0,"Tiempo ducha(min) ?");
-  lcdWriteData(9,2,"__");
+  lcdWriteData(9,2,(String)showerTime[0]);
+  lcdWriteData(10,2,(String)showerTime[1]);
   lcdWriteData(0,3,"D= borrar     #= OK");
   while(!done || key!='#'){
         if(position<11){
@@ -615,13 +616,13 @@ bool setShowerTime(){
             case 9:
               lcdWriteData(position,2," ");
               delay(100);
-              lcdWriteData(position,2,"0");
+              lcdWriteData(position,2,(String)showerTime[0]);
               delay(100);
               break;
             case 10:
               lcdWriteData(position,2," ");
               delay(100);
-              lcdWriteData(position,2,"0");
+              lcdWriteData(position,2,(String)showerTime[1]);
               delay(100);
               break;
           }
@@ -669,7 +670,8 @@ bool setNumberOfShowersDay(){       //He de modificar para que sea de 0 a 9
   Serial.println("CFG SHOWERS NUM * DAY");
   lcd.clear();
   lcdWriteData(0,0,"Duchas x Usuario/Dia");
-  lcdWriteData(9,2,"__");
+  lcdWriteData(9,2,(String)numShowersDay[0]);
+  lcdWriteData(10,2,(String)numShowersDay[1]);
   lcdWriteData(0,3,"D= borrar     #= OK");
   while(!done || key!='#'){
        key = keypad.getKey();

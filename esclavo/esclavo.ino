@@ -357,6 +357,7 @@ void ejecutarComando(){
         showerOn();
       break;
     case RESPONSE_REJECT:
+        Serial.println("Tag rechazado");
         pendingToValidateTag = false;
         error();
       break;
